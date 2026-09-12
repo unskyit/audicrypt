@@ -13,6 +13,8 @@
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🩷</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Local ZIP Library -->
     <script src="lib/zip.min.js"></script>
 
     <style>
@@ -51,7 +53,6 @@
         .btn-auth:active { transform: scale(0.96); }
         .btn-auth svg { width: 20px; height: 20px; fill: currentColor; }
         
-        /* Custom CSS Error Box */
         #error-msg { display: none; background: #ffebee; color: #c62828; padding: 14px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #ffcdd2; animation: shake 0.4s ease-in-out; margin-bottom: 10px; line-height: 1.4; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 
@@ -59,6 +60,11 @@
         .progress-bar-bg { width: 100%; height: 8px; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
         .progress-bar-fill { height: 100%; width: 0%; background: var(--accent-red); transition: width 0.2s; }
         #progress-text { font-size: 0.85rem; color: var(--text-dark); font-weight: 600; }
+
+        /* Mobile Debug Log Box */
+        #debug-log { display: none; width: 100%; max-width: 320px; background: #1e1e1e; color: #4af626; font-family: monospace; font-size: 0.75rem; padding: 10px; border-radius: 8px; margin-top: 20px; max-height: 120px; overflow-y: auto; text-align: left; word-wrap: break-word; border: 1px solid #333; }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+        .log-err { color: #ff5252; }
 
         /* --- INTRO VIEW --- */
         #view-intro { background: var(--bg-intro); padding: 24px 24px 50px 24px; justify-content: space-between; min-height: 100%; }
@@ -204,6 +210,9 @@
                 <div class="progress-bar-bg"><div class="progress-bar-fill" id="extract-fill"></div></div>
                 <div id="progress-text">Connecting to Vault...</div>
             </div>
+
+            <!-- Developer Debug Console (Mobile Viewer) -->
+            <div id="debug-log"></div>
         </div>
 
         <!-- INTRO VIEW -->
@@ -334,6 +343,7 @@
 
     </div>
 
+    <!-- Audios -->
     <audio id="audio-intro" loop></audio>
     <audio id="audio-main"></audio>
 
@@ -349,9 +359,22 @@
         let currentFilter = "";
         let showFavoritesOnly = false;
         let isReorderMode = false;
+
+        // Custom Debug Logger
+        const debugBox = document.getElementById('debug-log');
+        function logDebug(msg, err = null) {
+            let errStr = "";
+            if (err) errStr = `<span class="log-err"> | Err: ${err.name || ''} - ${err.message || err}</span>`;
+            debugBox.style.display = 'block';
+            debugBox.innerHTML += `<div class="log-entry">> ${msg}${errStr}</div>`;
+            debugBox.scrollTop = debugBox.scrollHeight;
+            console.log(msg, err);
+        }
         
+        // Ensure Hardware Back Button History exists
         if (!history.state) history.replaceState({view: 'auth'}, '', '');
 
+        // Local Storage Utilities
         const AppStorage = {
             getFavs: () => JSON.parse(localStorage.getItem('audicryptFavs') || '[]'),
             toggleFav: (baseName) => {
@@ -369,6 +392,7 @@
             getCustomOrder: () => JSON.parse(localStorage.getItem('audicryptCustomOrder') || '[]'),
             setCustomOrder: (arr) => localStorage.setItem('audicryptCustomOrder', JSON.stringify(arr)),
             
+            // Vault Security State
             isVaultSetup: () => localStorage.getItem('audicryptVaultSetup') === 'true',
             setVaultSetup: () => localStorage.setItem('audicryptVaultSetup', 'true'),
             getEncKey: () => localStorage.getItem('audicryptEncKey'),
@@ -409,6 +433,8 @@
         }
         function hideAuthError() {
             document.getElementById('error-msg').style.display = 'none';
+            debugBox.style.display = 'none';
+            debugBox.innerHTML = '';
         }
         document.getElementById('master-pwd').addEventListener('focus', hideAuthError);
 
@@ -424,6 +450,7 @@
                 const challenge = new Uint8Array(32);
                 crypto.getRandomValues(challenge);
                 
+                logDebug("Requesting Biometric Setup...");
                 await navigator.credentials.create({
                     publicKey: {
                         challenge: challenge,
@@ -431,24 +458,26 @@
                         user: { id: new Uint8Array(16), name: "audicrypt_user", displayName: "Family Member" },
                         pubKeyCredParams: [{alg: -7, type: "public-key"}],
                         authenticatorSelection: { 
-                            authenticatorAttachment: "platform", 
+                            // Reverted strict platform rule to show all options (NFC, USB, Device)
                             userVerification: "required" 
                         },
                         timeout: 60000
                     }
                 });
+                logDebug("Biometric Setup Success.");
 
                 const deviceKey = generateFallbackKey();
                 const safePwd = obfuscate(pwd, deviceKey);
                 
                 // Do NOT save state until extraction actually succeeds
                 await extractVault(pwd, () => {
+                    logDebug("Saving Encrypted State to LocalStorage.");
                     AppStorage.setEncKey(safePwd + "|" + deviceKey);
                     AppStorage.setVaultSetup();
                 });
                 
             } catch (err) {
-                console.error(err);
+                logDebug("Biometric Setup Failed", err);
                 btnTextSpan.innerText = "Secure & Download";
             }
         }
@@ -462,6 +491,7 @@
                 const challenge = new Uint8Array(32);
                 crypto.getRandomValues(challenge);
                 
+                logDebug("Requesting Biometric Unlock...");
                 await navigator.credentials.get({
                     publicKey: {
                         challenge: challenge,
@@ -469,25 +499,29 @@
                         timeout: 60000
                     }
                 });
+                logDebug("Unlock Success.");
 
                 const vaultData = AppStorage.getEncKey().split("|");
                 const pwd = deobfuscate(vaultData[0], vaultData[1]);
                 
+                logDebug("Checking OPFS Storage...");
                 const root = await navigator.storage.getDirectory();
                 try {
                     await root.getDirectoryHandle('audio');
+                    logDebug("OPFS Intact. Loading app.");
                     loadAppFromOPFS();
                 } catch(e) {
+                    logDebug("OPFS Cleared. Triggering background re-extraction.");
                     await extractVault(pwd, () => {});
                 }
 
             } catch (err) {
-                console.error(err);
+                logDebug("Unlock Failed", err);
                 btnTextSpan.innerText = "Unlock Audicrypt";
             }
         }
 
-        /* --- 2. EXTRACTION ENGINE --- */
+        /* --- 2. EXTRACTION ENGINE (zip.js + OPFS) --- */
         async function extractVault(password, onSuccessCallback) {
             document.getElementById('auth-setup').style.display = 'none';
             document.getElementById('auth-unlock').style.display = 'none';
@@ -498,14 +532,20 @@
             progCont.style.display = 'flex';
 
             try {
+                logDebug("Fetching data.zip...");
                 progText.innerText = "Downloading Encrypted Vault...";
                 const response = await fetch(DATA_ZIP_URL);
-                if(!response.ok) throw new Error("data.zip not found on server.");
+                if(!response.ok) throw new Error(`HTTP Error ${response.status} finding data.zip`);
                 const blob = await response.blob();
+                logDebug(`Downloaded ${blob.size} bytes`);
 
+                if (typeof zip === 'undefined') throw new ReferenceError("zip.min.js library is missing!");
+
+                logDebug("Initializing zipReader...");
                 progText.innerText = "Unlocking Vault...";
                 const zipReader = new zip.ZipReader(new zip.BlobReader(blob), { password: password });
                 const entries = await zipReader.getEntries();
+                logDebug(`Found ${entries.length} entries`);
                 
                 const opfsRoot = await navigator.storage.getDirectory();
                 
@@ -532,12 +572,13 @@
                     progFill.style.width = `${(count / entries.length) * 100}%`;
                 }
 
+                logDebug("Extraction complete.");
                 await zipReader.close();
                 onSuccessCallback(); 
                 loadAppFromOPFS();
                 
             } catch(e) {
-                console.error(e);
+                logDebug("Extraction Crashed", e);
                 showAuthError();
                 
                 progCont.style.display = 'none';
@@ -582,7 +623,7 @@
                     }
                     if(photoCount === 0) slideshowContainer.innerHTML = `<img class="slideshow-img active" src="illustration.jpg">`;
                     
-                } catch(e) { console.log("No intro folder found"); }
+                } catch(e) { console.log("No intro folder found in OPFS"); }
 
                 playlist = [];
                 const audioDir = await opfsRoot.getDirectoryHandle('audio');
@@ -600,7 +641,7 @@
                     }
                 }
 
-                if (playlist.length === 0) throw new Error("No MP3 files found.");
+                if (playlist.length === 0) throw new Error("No MP3 files found in audio folder.");
 
                 const savedOrder = AppStorage.getCustomOrder();
                 if(savedOrder && savedOrder.length > 0) {
@@ -623,9 +664,10 @@
 
             } catch(e) {
                 console.error("Failed to load app from OPFS", e);
-                alert("Vault Corrupted. Clearing and resetting...");
-                localStorage.clear();
-                location.reload();
+                logDebug("Load Failure", e);
+                // alert("Vault Corrupted. Clearing and resetting...");
+                // localStorage.clear();
+                // location.reload();
             }
         }
 
