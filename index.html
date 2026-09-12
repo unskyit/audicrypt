@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <!-- Professional Social Meta Tags (OG Tags) -->
     <title>Audicrypt by unskyit</title>
     <meta name="description" content="Audicrypt: A private vault that stores the voice of your loved ones 🩷">
     <meta property="og:title" content="Audicrypt by unskyit" />
@@ -12,12 +11,8 @@
     <meta property="og:image" content="https://raw.githubusercontent.com/unskyit/aarti/refs/heads/main/bannertusic.jpg" />
     <meta property="og:type" content="website" />
     
-    <!-- Pink Heart Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🩷</text></svg>">
-    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Local ZIP Library for AES-256 Extraction -->
     <script src="lib/zip.min.js"></script>
 
     <style>
@@ -31,81 +26,35 @@
             --bg-light: #f5f7f9;
         }
 
-        * { 
-            margin: 0; padding: 0; box-sizing: border-box; 
-            font-family: 'Inter', sans-serif; 
-            -webkit-tap-highlight-color: transparent; 
-        }
-
-        body {
-            background-color: var(--bg-outer);
-            display: flex; justify-content: center; align-items: center;
-            height: 100vh; height: 100dvh; 
-            width: 100vw;
-            overflow: hidden;
-        }
-
-        #app-container {
-            width: 100%; height: 100%;
-            background: var(--bg-white);
-            position: relative;
-            overflow: hidden; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
-        }
-
-        @media (min-width: 450px) {
-            #app-container {
-                max-width: 400px;
-                height: 90dvh; max-height: 850px;
-                border-radius: 32px;
-            }
-        }
-
-        .view {
-            position: absolute; top: 0; left: 0; 
-            width: 100%; height: 100%;
-            background: var(--bg-white);
-            display: flex; flex-direction: column;
-            transform: translate3d(0, 0, 0); 
-            will-change: transform, opacity;
-            backface-visibility: hidden; 
-            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease, visibility 0s linear 0s;
-            z-index: 10;
-            overflow-y: auto; overflow-x: hidden;
-            visibility: visible;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-outer); display: flex; justify-content: center; align-items: center; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; }
         
+        #app-container { width: 100%; height: 100%; background: var(--bg-white); position: relative; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+        @media (min-width: 450px) { #app-container { max-width: 400px; height: 90dvh; max-height: 850px; border-radius: 32px; } }
+
+        .view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-white); display: flex; flex-direction: column; transform: translate3d(0, 0, 0); will-change: transform, opacity; backface-visibility: hidden; transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease, visibility 0s linear 0s; z-index: 10; overflow-y: auto; overflow-x: hidden; visibility: visible; }
         .view.hidden-right { transform: translate3d(100%, 0, 0); opacity: 0; pointer-events: none; z-index: 1; visibility: hidden; transition-delay: 0s, 0s, 0.4s; }
         .view.hidden-left { transform: translate3d(-100%, 0, 0); opacity: 0; pointer-events: none; z-index: 1; visibility: hidden; transition-delay: 0s, 0s, 0.4s; }
         button svg { pointer-events: none; }
 
         /* --- AUTHENTICATION / VAULT VIEW --- */
-        #view-auth {
-            background: var(--bg-intro);
-            justify-content: center; align-items: center; padding: 30px; text-align: center;
-            z-index: 50; /* Always on top until unlocked */
-        }
+        #view-auth { background: var(--bg-intro); justify-content: center; align-items: center; padding: 30px; text-align: center; z-index: 50; }
         .vault-icon { width: 80px; height: 80px; color: var(--accent-red); margin-bottom: 20px; }
         .auth-title { font-size: 2rem; color: var(--text-dark); margin-bottom: 10px; font-weight: 700; }
-        .auth-desc { font-size: 0.95rem; color: var(--text-dark); opacity: 0.8; margin-bottom: 40px; line-height: 1.5; }
+        .auth-desc { font-size: 0.95rem; color: var(--text-dark); opacity: 0.8; margin-bottom: 30px; line-height: 1.5; }
         
         .auth-box { width: 100%; max-width: 320px; display: none; flex-direction: column; gap: 16px; }
         .auth-box.active { display: flex; }
         
-        .pwd-input {
-            width: 100%; padding: 16px; border-radius: 16px; border: none; outline: none;
-            font-size: 1rem; text-align: center; background: rgba(255,255,255,0.8);
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .btn-auth {
-            width: 100%; background: var(--text-dark); color: white; border: none;
-            padding: 18px; border-radius: 16px; font-size: 1rem; font-weight: 600; cursor: pointer;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15); transition: transform 0.2s;
-            display: flex; justify-content: center; align-items: center; gap: 10px;
-        }
+        .pwd-input { width: 100%; padding: 16px; border-radius: 16px; border: none; outline: none; font-size: 1rem; text-align: center; background: rgba(255,255,255,0.8); box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); }
+        .btn-auth { width: 100%; background: var(--text-dark); color: white; border: none; padding: 18px; border-radius: 16px; font-size: 1rem; font-weight: 600; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.15); transition: transform 0.2s; display: flex; justify-content: center; align-items: center; gap: 10px; }
         .btn-auth:active { transform: scale(0.96); }
         .btn-auth svg { width: 20px; height: 20px; fill: currentColor; }
         
+        /* Custom CSS Error Box */
+        #error-msg { display: none; background: #ffebee; color: #c62828; padding: 14px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #ffcdd2; animation: shake 0.4s ease-in-out; margin-bottom: 10px; line-height: 1.4; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
         #progress-container { display: none; flex-direction: column; align-items: center; width: 100%; margin-top: 20px; }
         .progress-bar-bg { width: 100%; height: 8px; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
         .progress-bar-fill { height: 100%; width: 0%; background: var(--accent-red); transition: width 0.2s; }
@@ -116,7 +65,6 @@
         .intro-header { width: 100%; display: flex; justify-content: flex-end; align-items: center; margin-bottom: 10px; position: relative; }
         .ambience-hint { display: flex; align-items: center; gap: 4px; color: var(--accent-red); font-size: 0.85rem; font-weight: 700; margin-right: 12px; animation: pointRight 1.5s infinite; opacity: 0.9; }
         .ambience-hint svg { width: 16px; height: 16px; fill: currentColor; }
-        @keyframes pointRight { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
         .bg-music-toggle { background: rgba(0,0,0,0.06); border: none; padding: 8px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; color: var(--text-dark); font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: transform 0.2s, background 0.3s; flex-shrink: 0; z-index: 2; }
         .bg-music-toggle:active { transform: scale(0.92); }
         .bg-music-toggle:hover { background: rgba(0,0,0,0.1); }
@@ -232,12 +180,14 @@
             <h1 class="auth-title">Audicrypt 🩷</h1>
             <p class="auth-desc">Your private offline vault for family memories.</p>
             
+            <div id="error-msg">Incorrect password or missing data.zip. Please try again.</div>
+            
             <!-- Setup Block -->
             <div id="auth-setup" class="auth-box">
                 <input type="password" id="master-pwd" class="pwd-input" placeholder="Enter Vault Password">
                 <button class="btn-auth" id="btn-setup">
                     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
-                    Secure & Download
+                    <span id="setup-btn-text">Secure & Download</span>
                 </button>
             </div>
             
@@ -245,7 +195,7 @@
             <div id="auth-unlock" class="auth-box">
                 <button class="btn-auth" id="btn-unlock">
                     <svg viewBox="0 0 24 24"><path d="M17.81 4.47c-.08 0-.16-.02-.23-.06C15.66 3.42 14 3 12.01 3c-1.98 0-3.86.47-5.57 1.41-.24.13-.54.04-.68-.2-.13-.24-.04-.55.2-.68C7.82 2.52 9.86 2 12.01 2c2.13 0 3.99.47 6.03 1.52.25.13.34.43.21.67-.09.18-.26.28-.44.28zM3.5 9.72c-.1 0-.2-.03-.29-.09-.23-.16-.28-.47-.12-.7.99-1.4 2.25-2.56 3.74-3.44C9.98 3.61 16.83 3.59 20 4.96c.25.11.36.4.25.65-.11.25-.4.36-.65.25-2.86-1.24-9.28-1.21-12.21.46-1.36.79-2.51 1.84-3.4 3.11-.12.18-.32.29-.49.29zm20.6 7.07c-.16 0-.32-.07-.42-.2-.59-.75-1.33-1.42-2.18-1.98-3.08-2.02-7.22-2.22-10.74-.53-.24.12-.54.02-.66-.23-.12-.24-.02-.54.23-.66 3.86-1.85 8.41-1.61 11.8.61.94.61 1.76 1.35 2.41 2.18.17.22.13.54-.09.71-.11.08-.23.1-.35.1zM6.9 19.34c-.08 0-.16-.02-.24-.06-.51-.27-1.12-.55-1.74-.83-.25-.11-.36-.4-.25-.65.11-.25.4-.36.65-.25.68.3 1.33.6 1.88.89.24.13.34.43.21.67-.09.18-.26.28-.44.28z"/></svg>
-                    Unlock Audicrypt
+                    <span id="unlock-btn-text">Unlock Audicrypt</span>
                 </button>
             </div>
             
@@ -271,7 +221,6 @@
             </div>
             
             <div class="intro-img-container" id="slideshow-container">
-                <!-- Image tags populated dynamically from OPFS -->
                 <img id="img-fallback" class="slideshow-img active" src="illustration.jpg">
             </div>
             
@@ -385,7 +334,6 @@
 
     </div>
 
-    <!-- Audios -->
     <audio id="audio-intro" loop></audio>
     <audio id="audio-main"></audio>
 
@@ -402,10 +350,8 @@
         let showFavoritesOnly = false;
         let isReorderMode = false;
         
-        // Ensure Hardware Back Button History exists
         if (!history.state) history.replaceState({view: 'auth'}, '', '');
 
-        // Local Storage Utilities
         const AppStorage = {
             getFavs: () => JSON.parse(localStorage.getItem('audicryptFavs') || '[]'),
             toggleFav: (baseName) => {
@@ -423,7 +369,6 @@
             getCustomOrder: () => JSON.parse(localStorage.getItem('audicryptCustomOrder') || '[]'),
             setCustomOrder: (arr) => localStorage.setItem('audicryptCustomOrder', JSON.stringify(arr)),
             
-            // Vault Security State
             isVaultSetup: () => localStorage.getItem('audicryptVaultSetup') === 'true',
             setVaultSetup: () => localStorage.setItem('audicryptVaultSetup', 'true'),
             getEncKey: () => localStorage.getItem('audicryptEncKey'),
@@ -433,15 +378,12 @@
         let currentLangMode = AppStorage.getLang();
 
         /* --- 1. CRYPTO & WEBAUTHN ENGINE --- */
-        
-        // Generate random key for devices without PRF Support (Graceful Fallback)
         function generateFallbackKey() {
             const arr = new Uint8Array(32);
             crypto.getRandomValues(arr);
             return btoa(String.fromCharCode.apply(null, arr));
         }
 
-        // Extremely simple XOR obfuscation just to not keep plaintext in LocalStorage for fallback
         function obfuscate(text, keyStr) {
             const key = atob(keyStr);
             let res = '';
@@ -461,16 +403,24 @@
             return res;
         }
 
-        // WebAuthn Invocation
+        function showAuthError() {
+            document.getElementById('error-msg').style.display = 'block';
+            document.getElementById('master-pwd').value = '';
+        }
+        function hideAuthError() {
+            document.getElementById('error-msg').style.display = 'none';
+        }
+        document.getElementById('master-pwd').addEventListener('focus', hideAuthError);
+
         async function handleVaultSetup() {
+            hideAuthError();
             const pwd = document.getElementById('master-pwd').value;
-            if(!pwd) return alert("Enter Vault Password");
+            if(!pwd) return;
             
-            const btn = document.getElementById('btn-setup');
-            btn.innerHTML = "Generating Fingerprint...";
+            const btnTextSpan = document.getElementById('setup-btn-text');
+            btnTextSpan.innerText = "Generating Fingerprint...";
             
             try {
-                // Request Biometric Setup
                 const challenge = new Uint8Array(32);
                 crypto.getRandomValues(challenge);
                 
@@ -478,40 +428,37 @@
                     publicKey: {
                         challenge: challenge,
                         rp: { name: "Audicrypt Vault" },
-                        user: {
-                            id: new Uint8Array(16),
-                            name: "audicrypt_user",
-                            displayName: "Family Member"
-                        },
+                        user: { id: new Uint8Array(16), name: "audicrypt_user", displayName: "Family Member" },
                         pubKeyCredParams: [{alg: -7, type: "public-key"}],
-                        authenticatorSelection: { userVerification: "required" },
+                        authenticatorSelection: { 
+                            authenticatorAttachment: "platform", 
+                            userVerification: "required" 
+                        },
                         timeout: 60000
                     }
                 });
 
-                // Since PRF requires highly advanced JS wrapper, we use graceful device-key fallback 
-                // locked strictly behind biometric authentication success.
                 const deviceKey = generateFallbackKey();
                 const safePwd = obfuscate(pwd, deviceKey);
                 
-                AppStorage.setEncKey(safePwd + "|" + deviceKey);
-                AppStorage.setVaultSetup();
-
-                await extractVault(pwd);
+                // Do NOT save state until extraction actually succeeds
+                await extractVault(pwd, () => {
+                    AppStorage.setEncKey(safePwd + "|" + deviceKey);
+                    AppStorage.setVaultSetup();
+                });
                 
             } catch (err) {
                 console.error(err);
-                alert("Fingerprint Setup Failed or Canceled.");
-                btn.innerHTML = "Secure & Download";
+                btnTextSpan.innerText = "Secure & Download";
             }
         }
 
         async function handleVaultUnlock() {
-            const btn = document.getElementById('btn-unlock');
-            btn.innerHTML = "Verifying...";
+            hideAuthError();
+            const btnTextSpan = document.getElementById('unlock-btn-text');
+            btnTextSpan.innerText = "Verifying...";
             
             try {
-                // Request Biometric Unlock
                 const challenge = new Uint8Array(32);
                 crypto.getRandomValues(challenge);
                 
@@ -523,30 +470,25 @@
                     }
                 });
 
-                // Unlock
                 const vaultData = AppStorage.getEncKey().split("|");
                 const pwd = deobfuscate(vaultData[0], vaultData[1]);
                 
-                // Verify OPFS is intact. If cleared, re-extract!
                 const root = await navigator.storage.getDirectory();
                 try {
                     await root.getDirectoryHandle('audio');
-                    // Intact! Proceed to App
                     loadAppFromOPFS();
                 } catch(e) {
-                    // Evicted by browser! Silently re-download.
-                    await extractVault(pwd);
+                    await extractVault(pwd, () => {});
                 }
 
             } catch (err) {
                 console.error(err);
-                alert("Fingerprint Verification Failed.");
-                btn.innerHTML = "Unlock Audicrypt";
+                btnTextSpan.innerText = "Unlock Audicrypt";
             }
         }
 
-        /* --- 2. EXTRACTION ENGINE (zip.js + OPFS) --- */
-        async function extractVault(password) {
+        /* --- 2. EXTRACTION ENGINE --- */
+        async function extractVault(password, onSuccessCallback) {
             document.getElementById('auth-setup').style.display = 'none';
             document.getElementById('auth-unlock').style.display = 'none';
             
@@ -565,7 +507,6 @@
                 const zipReader = new zip.ZipReader(new zip.BlobReader(blob), { password: password });
                 const entries = await zipReader.getEntries();
                 
-                // Root OPFS Directory
                 const opfsRoot = await navigator.storage.getDirectory();
                 
                 let count = 0;
@@ -574,7 +515,6 @@
                     
                     progText.innerText = `Extracting ${entry.filename.split('/').pop()}...`;
                     
-                    // Recreate folder structure in OPFS (intro/ and audio/)
                     const parts = entry.filename.split('/');
                     const fileName = parts.pop();
                     let currentDir = opfsRoot;
@@ -584,8 +524,6 @@
                     }
                     
                     const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
-                    
-                    // Stream directly into OPFS for zero RAM usage
                     const writable = await fileHandle.createWritable();
                     await entry.getData(new zip.WritableStreamWriter(writable));
                     await writable.close();
@@ -595,18 +533,21 @@
                 }
 
                 await zipReader.close();
+                onSuccessCallback(); 
                 loadAppFromOPFS();
                 
             } catch(e) {
                 console.error(e);
-                alert("Extraction Failed! Wrong Password or Missing data.zip.");
-                // Reset UI
-                progCont.style.display = 'none';
-                if(AppStorage.isVaultSetup()) document.getElementById('auth-unlock').style.display = 'flex';
-                else document.getElementById('auth-setup').style.display = 'flex';
+                showAuthError();
                 
-                document.getElementById('btn-setup').innerHTML = "Secure & Download";
-                document.getElementById('btn-unlock').innerHTML = "Unlock Audicrypt";
+                progCont.style.display = 'none';
+                if(AppStorage.isVaultSetup()) {
+                    document.getElementById('auth-unlock').style.display = 'flex';
+                    document.getElementById('unlock-btn-text').innerText = "Unlock Audicrypt";
+                } else {
+                    document.getElementById('auth-setup').style.display = 'flex';
+                    document.getElementById('setup-btn-text').innerText = "Secure & Download";
+                }
             }
         }
 
@@ -615,21 +556,17 @@
             try {
                 const opfsRoot = await navigator.storage.getDirectory();
                 
-                // 1. Load Intro Assets
                 try {
                     const introDir = await opfsRoot.getDirectoryHandle('intro');
-                    
-                    // Load Audio
                     try {
                         const introAudioHandle = await introDir.getFileHandle('intro.mp3');
                         const introAudioFile = await introAudioHandle.getFile();
                         document.getElementById('audio-intro').src = URL.createObjectURL(introAudioFile);
                         document.getElementById('audio-intro').play().catch(()=>{});
-                    } catch(e) {} // Silent ignore if intro.mp3 missing
+                    } catch(e) {} 
 
-                    // Load Photos
                     const slideshowContainer = document.getElementById('slideshow-container');
-                    slideshowContainer.innerHTML = ''; // clear fallback
+                    slideshowContainer.innerHTML = ''; 
                     
                     let photoCount = 0;
                     for (let i=1; i<=5; i++) {
@@ -643,38 +580,28 @@
                             photoCount++;
                         } catch(e) {}
                     }
+                    if(photoCount === 0) slideshowContainer.innerHTML = `<img class="slideshow-img active" src="illustration.jpg">`;
                     
-                    if(photoCount === 0) {
-                        slideshowContainer.innerHTML = `<img class="slideshow-img active" src="illustration.jpg">`;
-                    }
-                    
-                } catch(e) { console.log("No intro folder found in OPFS"); }
+                } catch(e) { console.log("No intro folder found"); }
 
-                // 2. Load Audio Library
                 playlist = [];
                 const audioDir = await opfsRoot.getDirectoryHandle('audio');
                 
-                // Build playlist from OPFS iterator
                 for await (const [name, handle] of audioDir.entries()) {
                     if (name.endsWith('.mp3')) {
                         let cleanTitle = name.replace('.mp3', '').replace(/-/g, ' ').replace(/_/g, ' ');
                         cleanTitle = cleanTitle.replace(/\b\w/g, c => c.toUpperCase());
-                        
-                        // Create persistent local URL
                         const file = await handle.getFile();
                         
                         playlist.push({
-                            title: cleanTitle,
-                            artist: "Family Vault",
-                            fileUrl: URL.createObjectURL(file),
-                            baseName: name.replace('.mp3', '')
+                            title: cleanTitle, artist: "Family Vault",
+                            fileUrl: URL.createObjectURL(file), baseName: name.replace('.mp3', '')
                         });
                     }
                 }
 
-                if (playlist.length === 0) throw new Error("No MP3 files found in audio folder.");
+                if (playlist.length === 0) throw new Error("No MP3 files found.");
 
-                // Apply Custom Order
                 const savedOrder = AppStorage.getCustomOrder();
                 if(savedOrder && savedOrder.length > 0) {
                     playlist.sort((a, b) => {
@@ -687,13 +614,9 @@
                 }
 
                 initDynamicCards();
-                
-                // Transition UI from Auth to Intro/DeepLink
                 document.getElementById('view-auth').classList.add('hidden-left');
                 
-                if(checkURLParams()) {
-                    // checkURLParams handles the UI transition if a track matched
-                } else {
+                if(!checkURLParams()) {
                     navTo('home');
                     renderLibrary();
                 }
@@ -706,24 +629,18 @@
             }
         }
 
-        // --- AUTH INIT ON BOOT ---
         window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('btn-setup').addEventListener('click', handleVaultSetup);
             document.getElementById('btn-unlock').addEventListener('click', handleVaultUnlock);
             
             if (AppStorage.isVaultSetup()) {
                 document.getElementById('auth-unlock').style.display = 'flex';
-                // Optional: Auto-trigger fingerprint prompt on boot
-                // handleVaultUnlock(); 
             } else {
                 document.getElementById('auth-setup').style.display = 'flex';
             }
         });
 
-
         /* --- TUSIC UI LOGIC --- */
-        
-        // Slideshow Engine
         setInterval(() => {
             const imgs = document.querySelectorAll('.slideshow-img');
             let valid = Array.from(imgs).filter(img => img.style.display !== 'none');
@@ -827,9 +744,7 @@
         document.getElementById('nav-search').addEventListener('click', () => navTo('library'));
         document.getElementById('nav-fav').addEventListener('click', () => navTo('fav'));
 
-        document.getElementById('btn-back').addEventListener('click', () => {
-            history.back(); 
-        });
+        document.getElementById('btn-back').addEventListener('click', () => history.back());
 
         const btnLangToggle = document.getElementById('btn-lang-toggle');
         const spanLangText = document.getElementById('lang-btn-text');
@@ -844,10 +759,7 @@
             AppStorage.setLang(currentLangMode);
             spanLangText.innerText = langLabels[currentLangMode];
             
-            if (currentLyrics.length > 0) {
-                renderLyrics();
-                updatePlayerUI(); 
-            }
+            if (currentLyrics.length > 0) { renderLyrics(); updatePlayerUI(); }
         });
 
         const btnReorderToggle = document.getElementById('btn-reorder-toggle');
@@ -905,19 +817,11 @@
                 btnReorderToggle.style.display = 'flex';
             }
 
-            if (showFavoritesOnly) {
-                const favs = AppStorage.getFavs();
-                listToRender = listToRender.filter(t => favs.includes(t.baseName));
-            }
-
-            if (currentFilter) {
-                listToRender = listToRender.filter(t => t.title.toLowerCase().includes(currentFilter.toLowerCase()));
-            }
+            if (showFavoritesOnly) listToRender = listToRender.filter(t => AppStorage.getFavs().includes(t.baseName));
+            if (currentFilter) listToRender = listToRender.filter(t => t.title.toLowerCase().includes(currentFilter.toLowerCase()));
             
             if(listToRender.length === 0) {
-                trackList.innerHTML = `<div class="empty-state">
-                    ${showFavoritesOnly ? "You haven't favorited any tracks yet." : "No tracks found."}
-                </div>`;
+                trackList.innerHTML = `<div class="empty-state">${showFavoritesOnly ? "You haven't favorited any tracks yet." : "No tracks found."}</div>`;
                 return;
             }
 
@@ -958,11 +862,9 @@
 
         function refreshLibraryUI() {
             const isPlaying = !audioMain.paused && audioMain.src !== "";
-            
             document.querySelectorAll('.track-item').forEach(el => {
                 const idx = parseInt(el.getAttribute('data-index'));
                 const isActive = audioMain.src !== "" && idx === currentIdx;
-                
                 if (isActive) {
                     el.classList.add('active-track');
                     if(isPlaying) el.classList.add('is-playing');
@@ -984,10 +886,7 @@
             
             vLib.classList.add('hidden-left');
             vPlayer.classList.remove('hidden-right');
-            setTimeout(() => {
-                isTransitioning = false;
-                updatePlayerUI(); 
-            }, 450); 
+            setTimeout(() => { isTransitioning = false; updatePlayerUI(); }, 450); 
         }
 
         audioMain.addEventListener('play', () => { updatePlayIcon(true); refreshLibraryUI(); });
@@ -995,11 +894,7 @@
 
         async function openPlayer(index) {
             fadeOutIntro(); 
-            
-            if (currentIdx === index && audioMain.src !== "") {
-                openPlayerView(true);
-                return; 
-            }
+            if (currentIdx === index && audioMain.src !== "") { openPlayerView(true); return; }
 
             currentIdx = index;
             const track = playlist[index];
@@ -1044,7 +939,6 @@
             syncPlayerFavIcon();
         });
 
-        // OPFS Lyrics Fetcher
         async function fetchLyrics(baseName) {
             const myFetchId = ++currentFetchId;
             const lyricsDiv = document.getElementById('lyrics-display');
@@ -1072,14 +966,10 @@
         function renderLyrics() {
             const lyricsDiv = document.getElementById('lyrics-display');
             lyricsDiv.innerHTML = '';
-            
-            const spacerTop = document.createElement('div');
-            spacerTop.style.height = '60px';
-            lyricsDiv.appendChild(spacerTop);
+            const spacerTop = document.createElement('div'); spacerTop.style.height = '60px'; lyricsDiv.appendChild(spacerTop);
 
             currentLyrics.forEach((line, i) => {
                 let displayText = "";
-                
                 if (line.text) {
                     if (currentLangMode !== 'both') {
                         const subLines = line.text.split('\n');
@@ -1090,25 +980,18 @@
                             if (currentLangMode === 'hinglish') return hasLatin || (!hasDevanagari && !hasLatin);
                             return true;
                         });
-                        
                         if (filtered.length > 0) displayText = filtered.join('<br>');
                         else displayText = line.text.replace(/\n/g, '<br>');
                     } else {
                         displayText = line.text.replace(/\n/g, '<br>');
                     }
                 }
-
                 const p = document.createElement('div');
-                p.className = 'lyric-line';
-                p.id = 'lyric-' + i;
-                p.innerHTML = displayText; 
+                p.className = 'lyric-line'; p.id = 'lyric-' + i; p.innerHTML = displayText; 
                 lyricsDiv.appendChild(p);
             });
 
-            const spacerBot = document.createElement('div');
-            spacerBot.style.height = '120px'; 
-            lyricsDiv.appendChild(spacerBot);
-            
+            const spacerBot = document.createElement('div'); spacerBot.style.height = '120px'; lyricsDiv.appendChild(spacerBot);
             if (!isTransitioning) updatePlayerUI(); 
         }
 
@@ -1136,14 +1019,10 @@
 
         let isLoop = false;
         document.getElementById('btn-loop').addEventListener('click', function() {
-            isLoop = !isLoop;
-            audioMain.loop = isLoop;
-            this.style.color = isLoop ? 'var(--accent-red)' : 'var(--text-dark)';
+            isLoop = !isLoop; audioMain.loop = isLoop; this.style.color = isLoop ? 'var(--accent-red)' : 'var(--text-dark)';
         });
 
-        audioMain.addEventListener('ended', () => {
-            if (!isLoop) document.getElementById('btn-next').click();
-        });
+        audioMain.addEventListener('ended', () => { if (!isLoop) document.getElementById('btn-next').click(); });
 
         const progBar = document.getElementById('progress-bar');
         const progFill = document.getElementById('progress-fill');
@@ -1156,25 +1035,19 @@
             return `${m}:${sec<10?'0'+sec:sec}`;
         }
 
-        audioMain.addEventListener('loadedmetadata', () => {
-            tTot.innerText = fmt(audioMain.duration);
-        });
+        audioMain.addEventListener('loadedmetadata', () => { tTot.innerText = fmt(audioMain.duration); });
 
         function updatePlayerUI() {
             if (!audioMain.duration || vPlayer.classList.contains('hidden-right') || isTransitioning) return;
-            
             tCurr.innerText = fmt(audioMain.currentTime);
             
-            if (!isScrubbing) {
-                progFill.style.width = `${(audioMain.currentTime / audioMain.duration) * 100}%`;
-            }
+            if (!isScrubbing) progFill.style.width = `${(audioMain.currentTime / audioMain.duration) * 100}%`;
             
             if (currentLyrics.length === 0) return;
             const ct = audioMain.currentTime;
             let activeIdx = -1;
             for (let i = 0; i < currentLyrics.length; i++) {
-                if (ct >= currentLyrics[i].time) activeIdx = i;
-                else break;
+                if (ct >= currentLyrics[i].time) activeIdx = i; else break;
             }
             if (activeIdx !== -1) {
                 const activeEl = document.getElementById('lyric-' + activeIdx);
@@ -1186,9 +1059,7 @@
             }
         }
 
-        audioMain.addEventListener('timeupdate', () => {
-            updatePlayerUI();
-        });
+        audioMain.addEventListener('timeupdate', () => { updatePlayerUI(); });
 
         let isScrubbing = false;
         function seekAudio(e) {
@@ -1196,24 +1067,14 @@
             const rect = progBar.getBoundingClientRect();
             let pct = (e.clientX - rect.left) / rect.width;
             pct = Math.max(0, Math.min(1, pct)); 
-            
             progFill.style.width = `${pct * 100}%`;
             audioMain.currentTime = pct * audioMain.duration;
             updatePlayerUI(); 
         }
 
-        progBar.addEventListener('pointerdown', (e) => {
-            isScrubbing = true;
-            seekAudio(e);
-        });
-        
-        window.addEventListener('pointermove', (e) => {
-            if(isScrubbing) seekAudio(e);
-        });
-        
-        window.addEventListener('pointerup', () => {
-            isScrubbing = false;
-        });
+        progBar.addEventListener('pointerdown', (e) => { isScrubbing = true; seekAudio(e); });
+        window.addEventListener('pointermove', (e) => { if(isScrubbing) seekAudio(e); });
+        window.addEventListener('pointerup', () => { isScrubbing = false; });
     </script>
 </body>
 </html>
