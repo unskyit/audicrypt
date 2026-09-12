@@ -570,15 +570,17 @@
                 // --- 2. SECURE EXTRACTION ENGINE ---
                 if (typeof zip === 'undefined') throw new ReferenceError("zip.min.js library is missing!");
 
+                // CRITICAL FIX: Force zip.js to run in standalone mode without looking for missing Web Worker files
+                zip.configure({ useWebWorkers: false });
+
                 logDebug("Initializing zipReader...");
                 progText.innerText = "Verifying Encryption...";
-                progFill.style.width = "0%"; // Reset progress bar for the extraction phase
+                progFill.style.width = "0%";
 
-                // Initialize without password here...
+                // Apply the password globally to the ZipReader
                 const zipReader = new zip.ZipReader(new zip.BlobReader(blob), { password: password });
                 const entries = await zipReader.getEntries();
                 
-                // Filter out folders to get an accurate file count
                 const filesToExtract = entries.filter(e => !e.directory);
                 logDebug(`Found ${filesToExtract.length} files to extract`);
                 
@@ -597,9 +599,8 @@
                         currentDir = await currentDir.getDirectoryHandle(folder, { create: true }); 
                     }
                     
-                    // ...and pass the password EXACTLY when reading the data!
                     const blobWriter = new zip.BlobWriter();
-                    const extractedBlob = await entry.getData(blobWriter, { password: password });
+                    const extractedBlob = await entry.getData(blobWriter);
                     
                     const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
                     const writable = await fileHandle.createWritable();
@@ -614,7 +615,6 @@
                 progText.innerText = "Vault Unlocked 🩷";
                 await zipReader.close();
                 
-                // Give the user 500ms to visually see the progress bar hit 100%
                 setTimeout(() => {
                     onSuccessCallback(); 
                     loadAppFromOPFS();
@@ -623,11 +623,11 @@
             } catch(e) {
                 logDebug("Extraction Crashed", e);
                 
-                // Smarter Error Handling
                 let errorMsg = "Extraction failed. Please try again.";
                 const errText = (e.message || "").toLowerCase();
                 
-                if (errText.includes("password") || errText.includes("invalid")) {
+                // Matches standard Invalid password and AES Invalid authentication code errors
+                if (errText.includes("password") || errText.includes("invalid") || errText.includes("authentication")) {
                     errorMsg = "Incorrect password. Audicrypt remains locked.";
                 } else if (errText.includes("corrupt") || errText.includes("format")) {
                     errorMsg = "The vault file appears to be corrupted.";
