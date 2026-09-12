@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
+    <!-- Professional Social Meta Tags (OG Tags) -->
     <title>Audicrypt by unskyit</title>
     <meta name="description" content="Audicrypt: A private vault that stores the voice of your loved ones 🩷">
     <meta property="og:title" content="Audicrypt by unskyit" />
@@ -11,10 +12,12 @@
     <meta property="og:image" content="https://raw.githubusercontent.com/unskyit/aarti/refs/heads/main/bannertusic.jpg" />
     <meta property="og:type" content="website" />
     
+    <!-- Pink Heart Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🩷</text></svg>">
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Local ZIP Library -->
+    <!-- Local ZIP Library for AES-256 Extraction -->
     <script src="lib/zip.min.js"></script>
 
     <style>
@@ -35,6 +38,7 @@
         @media (min-width: 450px) { #app-container { max-width: 400px; height: 90dvh; max-height: 850px; border-radius: 32px; } }
 
         .view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-white); display: flex; flex-direction: column; transform: translate3d(0, 0, 0); will-change: transform, opacity; backface-visibility: hidden; transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease, visibility 0s linear 0s; z-index: 10; overflow-y: auto; overflow-x: hidden; visibility: visible; }
+        
         .view.hidden-right { transform: translate3d(100%, 0, 0); opacity: 0; pointer-events: none; z-index: 1; visibility: hidden; transition-delay: 0s, 0s, 0.4s; }
         .view.hidden-left { transform: translate3d(-100%, 0, 0); opacity: 0; pointer-events: none; z-index: 1; visibility: hidden; transition-delay: 0s, 0s, 0.4s; }
         button svg { pointer-events: none; }
@@ -53,8 +57,10 @@
         .btn-auth:active { transform: scale(0.96); }
         .btn-auth svg { width: 20px; height: 20px; fill: currentColor; }
         
-        #error-msg { display: none; background: #ffebee; color: #c62828; padding: 14px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #ffcdd2; animation: shake 0.4s ease-in-out; margin-bottom: 10px; line-height: 1.4; }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+        /* Beautiful CSS Error Box */
+        .error-box { display: none; align-items: center; gap: 8px; background: #ffebee; color: #c62828; padding: 14px 16px; border-radius: 16px; font-size: 0.9rem; font-weight: 600; margin-bottom: 20px; animation: shake 0.4s ease-in-out; text-align: left; width: 100%; max-width: 320px; box-shadow: 0 4px 12px rgba(229, 115, 115, 0.2); }
+        .error-box svg { width: 22px; height: 22px; fill: currentColor; flex-shrink: 0; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
         #progress-container { display: none; flex-direction: column; align-items: center; width: 100%; margin-top: 20px; }
         .progress-bar-bg { width: 100%; height: 8px; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
@@ -71,6 +77,7 @@
         .intro-header { width: 100%; display: flex; justify-content: flex-end; align-items: center; margin-bottom: 10px; position: relative; }
         .ambience-hint { display: flex; align-items: center; gap: 4px; color: var(--accent-red); font-size: 0.85rem; font-weight: 700; margin-right: 12px; animation: pointRight 1.5s infinite; opacity: 0.9; }
         .ambience-hint svg { width: 16px; height: 16px; fill: currentColor; }
+        @keyframes pointRight { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
         .bg-music-toggle { background: rgba(0,0,0,0.06); border: none; padding: 8px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; color: var(--text-dark); font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: transform 0.2s, background 0.3s; flex-shrink: 0; z-index: 2; }
         .bg-music-toggle:active { transform: scale(0.92); }
         .bg-music-toggle:hover { background: rgba(0,0,0,0.1); }
@@ -186,7 +193,10 @@
             <h1 class="auth-title">Audicrypt 🩷</h1>
             <p class="auth-desc">Your private offline vault for family memories.</p>
             
-            <div id="error-msg">Incorrect password or missing data.zip. Please try again.</div>
+            <div id="error-box" class="error-box">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <span id="error-text">Incorrect password. Please try again.</span>
+            </div>
             
             <!-- Setup Block -->
             <div id="auth-setup" class="auth-box">
@@ -371,10 +381,8 @@
             console.log(msg, err);
         }
         
-        // Ensure Hardware Back Button History exists
         if (!history.state) history.replaceState({view: 'auth'}, '', '');
 
-        // Local Storage Utilities
         const AppStorage = {
             getFavs: () => JSON.parse(localStorage.getItem('audicryptFavs') || '[]'),
             toggleFav: (baseName) => {
@@ -392,7 +400,6 @@
             getCustomOrder: () => JSON.parse(localStorage.getItem('audicryptCustomOrder') || '[]'),
             setCustomOrder: (arr) => localStorage.setItem('audicryptCustomOrder', JSON.stringify(arr)),
             
-            // Vault Security State
             isVaultSetup: () => localStorage.getItem('audicryptVaultSetup') === 'true',
             setVaultSetup: () => localStorage.setItem('audicryptVaultSetup', 'true'),
             getEncKey: () => localStorage.getItem('audicryptEncKey'),
@@ -411,9 +418,7 @@
         function obfuscate(text, keyStr) {
             const key = atob(keyStr);
             let res = '';
-            for(let i=0; i<text.length; i++) {
-                res += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-            }
+            for(let i=0; i<text.length; i++) { res += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length)); }
             return btoa(res);
         }
 
@@ -421,22 +426,22 @@
             const text = atob(b64);
             const key = atob(keyStr);
             let res = '';
-            for(let i=0; i<text.length; i++) {
-                res += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-            }
+            for(let i=0; i<text.length; i++) { res += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length)); }
             return res;
         }
 
-        function showAuthError() {
-            document.getElementById('error-msg').style.display = 'block';
+        function showAuthError(msg) {
+            const errBox = document.getElementById('error-box');
+            document.getElementById('error-text').innerText = msg;
+            errBox.style.display = 'flex';
             document.getElementById('master-pwd').value = '';
         }
         function hideAuthError() {
-            document.getElementById('error-msg').style.display = 'none';
+            document.getElementById('error-box').style.display = 'none';
             debugBox.style.display = 'none';
             debugBox.innerHTML = '';
         }
-        document.getElementById('master-pwd').addEventListener('focus', hideAuthError);
+        document.getElementById('master-pwd').addEventListener('input', hideAuthError);
 
         async function handleVaultSetup() {
             hideAuthError();
@@ -457,10 +462,7 @@
                         rp: { name: "Audicrypt Vault" },
                         user: { id: new Uint8Array(16), name: "audicrypt_user", displayName: "Family Member" },
                         pubKeyCredParams: [{alg: -7, type: "public-key"}],
-                        authenticatorSelection: { 
-                            // Reverted strict platform rule to show all options (NFC, USB, Device)
-                            userVerification: "required" 
-                        },
+                        authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
                         timeout: 60000
                     }
                 });
@@ -469,7 +471,6 @@
                 const deviceKey = generateFallbackKey();
                 const safePwd = obfuscate(pwd, deviceKey);
                 
-                // Do NOT save state until extraction actually succeeds
                 await extractVault(pwd, () => {
                     logDebug("Saving Encrypted State to LocalStorage.");
                     AppStorage.setEncKey(safePwd + "|" + deviceKey);
@@ -478,6 +479,7 @@
                 
             } catch (err) {
                 logDebug("Biometric Setup Failed", err);
+                showAuthError("Fingerprint verification failed or canceled.");
                 btnTextSpan.innerText = "Secure & Download";
             }
         }
@@ -493,11 +495,7 @@
                 
                 logDebug("Requesting Biometric Unlock...");
                 await navigator.credentials.get({
-                    publicKey: {
-                        challenge: challenge,
-                        userVerification: "required",
-                        timeout: 60000
-                    }
+                    publicKey: { challenge: challenge, userVerification: "required", timeout: 60000 }
                 });
                 logDebug("Unlock Success.");
 
@@ -517,6 +515,7 @@
 
             } catch (err) {
                 logDebug("Unlock Failed", err);
+                showAuthError("Fingerprint verification failed or canceled.");
                 btnTextSpan.innerText = "Unlock Audicrypt";
             }
         }
@@ -559,13 +558,15 @@
                     const fileName = parts.pop();
                     let currentDir = opfsRoot;
                     
-                    for(const folder of parts) {
-                        currentDir = await currentDir.getDirectoryHandle(folder, { create: true });
-                    }
+                    for(const folder of parts) { currentDir = await currentDir.getDirectoryHandle(folder, { create: true }); }
+                    
+                    // The Error-Free Standard Extraction approach
+                    const blobWriter = new zip.BlobWriter();
+                    const extractedBlob = await entry.getData(blobWriter);
                     
                     const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
                     const writable = await fileHandle.createWritable();
-                    await entry.getData(new zip.WritableStreamWriter(writable));
+                    await writable.write(extractedBlob);
                     await writable.close();
                     
                     count++;
@@ -579,7 +580,7 @@
                 
             } catch(e) {
                 logDebug("Extraction Crashed", e);
-                showAuthError();
+                showAuthError("Incorrect password or corrupt zip. Please try again.");
                 
                 progCont.style.display = 'none';
                 if(AppStorage.isVaultSetup()) {
@@ -665,9 +666,6 @@
             } catch(e) {
                 console.error("Failed to load app from OPFS", e);
                 logDebug("Load Failure", e);
-                // alert("Vault Corrupted. Clearing and resetting...");
-                // localStorage.clear();
-                // location.reload();
             }
         }
 
@@ -833,14 +831,14 @@
                 const siblingY = dir === -1 ? siblingEl.offsetHeight + 12 : -siblingEl.offsetHeight - 12;
 
                 targetEl.style.transform = `translateY(${targetY}px)`;
-                targetEl.style.transition = 'transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1)';
+                targetEl.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1)';
                 targetEl.style.zIndex = '10';
                 
                 siblingEl.style.transform = `translateY(${siblingY}px)`;
-                siblingEl.style.transition = 'transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1)';
+                siblingEl.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1)';
                 siblingEl.style.zIndex = '9';
                 
-                setTimeout(renderLibrary, 450);
+                setTimeout(renderLibrary, 500);
             } else {
                 renderLibrary();
             }
