@@ -532,37 +532,74 @@
 
             try {
                 logDebug("Fetching data.zip...");
-                progText.innerText = "Downloading Encrypted Vault...";
+                progFill.style.width = "0%";
+                progText.innerText = "Connecting to Vault...";
+
+                // --- 1. PROGRESSIVE DOWNLOAD ENGINE ---
                 const response = await fetch(DATA_ZIP_URL);
                 if(!response.ok) throw new Error(`HTTP Error ${response.status} finding data.zip`);
-                const blob = await response.blob();
+
+                const contentLength = response.headers.get('content-length');
+                const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+                let loadedBytes = 0;
+                
+                const reader = response.body.getReader();
+                const chunks = [];
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    chunks.push(value);
+                    loadedBytes += value.length;
+
+                    const loadedMB = (loadedBytes / (1024 * 1024)).toFixed(2);
+                    if (totalBytes) {
+                        const totalMB = (totalBytes / (1024 * 1024)).toFixed(2);
+                        const percent = (loadedBytes / totalBytes) * 100;
+                        progFill.style.width = `${percent}%`;
+                        progText.innerText = `Downloading: ${loadedMB} / ${totalMB} MB`;
+                    } else {
+                        progText.innerText = `Downloading: ${loadedMB} MB...`;
+                    }
+                }
+
+                const blob = new Blob(chunks, { type: response.headers.get('content-type') || 'application/zip' });
                 logDebug(`Downloaded ${blob.size} bytes`);
 
+                // --- 2. SECURE EXTRACTION ENGINE ---
                 if (typeof zip === 'undefined') throw new ReferenceError("zip.min.js library is missing!");
 
                 logDebug("Initializing zipReader...");
-                progText.innerText = "Unlocking Vault...";
-                const zipReader = new zip.ZipReader(new zip.BlobReader(blob), { password: password });
+                progText.innerText = "Verifying Encryption...";
+                progFill.style.width = "0%"; // Reset progress bar for the extraction phase
+
+                // Initialize without password here...
+                const zipReader = new zip.ZipReader(new zip.BlobReader(blob));
                 const entries = await zipReader.getEntries();
-                logDebug(`Found ${entries.length} entries`);
+                
+                // Filter out folders to get an accurate file count
+                const filesToExtract = entries.filter(e => !e.directory);
+                logDebug(`Found ${filesToExtract.length} files to extract`);
                 
                 const opfsRoot = await navigator.storage.getDirectory();
-                
                 let count = 0;
-                for (const entry of entries) {
-                    if (entry.directory) continue;
-                    
-                    progText.innerText = `Extracting ${entry.filename.split('/').pop()}...`;
+                
+                for (const entry of filesToExtract) {
+                    const shortName = entry.filename.split('/').pop();
+                    progText.innerText = `Decrypting ${shortName}...`;
                     
                     const parts = entry.filename.split('/');
                     const fileName = parts.pop();
                     let currentDir = opfsRoot;
                     
-                    for(const folder of parts) { currentDir = await currentDir.getDirectoryHandle(folder, { create: true }); }
+                    for(const folder of parts) { 
+                        currentDir = await currentDir.getDirectoryHandle(folder, { create: true }); 
+                    }
                     
-                    // The Error-Free Standard Extraction approach
+                    // ...and pass the password EXACTLY when reading the data!
                     const blobWriter = new zip.BlobWriter();
-                    const extractedBlob = await entry.getData(blobWriter);
+                    const extractedBlob = await entry.getData(blobWriter, { password: password });
                     
                     const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
                     const writable = await fileHandle.createWritable();
@@ -570,17 +607,33 @@
                     await writable.close();
                     
                     count++;
-                    progFill.style.width = `${(count / entries.length) * 100}%`;
+                    progFill.style.width = `${(count / filesToExtract.length) * 100}%`;
                 }
 
                 logDebug("Extraction complete.");
+                progText.innerText = "Vault Unlocked 🩷";
                 await zipReader.close();
-                onSuccessCallback(); 
-                loadAppFromOPFS();
+                
+                // Give the user 500ms to visually see the progress bar hit 100%
+                setTimeout(() => {
+                    onSuccessCallback(); 
+                    loadAppFromOPFS();
+                }, 500);
                 
             } catch(e) {
                 logDebug("Extraction Crashed", e);
-                showAuthError("Incorrect password or corrupt zip. Please try again.");
+                
+                // Smarter Error Handling
+                let errorMsg = "Extraction failed. Please try again.";
+                const errText = (e.message || "").toLowerCase();
+                
+                if (errText.includes("password") || errText.includes("invalid")) {
+                    errorMsg = "Incorrect password. Audicrypt remains locked.";
+                } else if (errText.includes("corrupt") || errText.includes("format")) {
+                    errorMsg = "The vault file appears to be corrupted.";
+                }
+
+                showAuthError(errorMsg);
                 
                 progCont.style.display = 'none';
                 if(AppStorage.isVaultSetup()) {
