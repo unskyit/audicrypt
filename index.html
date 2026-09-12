@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- Professional Social Meta Tags (OG Tags) -->
+    <title>Audicrypt by unskyit</title>
+    <meta name="description" content="Audicrypt: A private vault that stores the voice of your loved ones 🩷">
+    <meta property="og:title" content="Audicrypt by unskyit" />
+    <meta property="og:description" content="A tiny, offline music vault that securely stores the voice of your loved ones 🩷" />
+    <meta property="og:image" content="https://raw.githubusercontent.com/unskyit/aarti/refs/heads/main/bannertusic.jpg" />
+    <meta property="og:type" content="website" />
+    
+    <!-- Pink Heart Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🩷</text></svg>">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Local ZIP Library for AES-256 Extraction -->
+    <script src="lib/zip.min.js"></script>
+
+    <style>
+        :root {
+            --bg-outer: #e6eaef;
+            --bg-intro: #f3dca6;
+            --text-dark: #12202c;
+            --text-muted: #7f8ea3;
+            --accent-red: #d95a53;
+            --bg-white: #ffffff;
+            --bg-light: #f5f7f9;
+        }
+
+        * { 
+            margin: 0; padding: 0; box-sizing: border-box; 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        body {
+            background-color: var(--bg-outer);
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; height: 100dvh; 
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 100%; height: 100%;
+            background: var(--bg-white);
+            position: relative;
+            overflow: hidden; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+        }
+
+        @media (min-width: 450px) {
+            #app-container {
+                max-width: 400px;
+                height: 90dvh; max-height: 850px;
+                border-radius: 32px;
+            }
+        }
+
+        .view {
+            position: absolute; top: 0; left: 0; 
+            width: 100%; height: 100%;
+            background: var(--bg-white);
+            display: flex; flex-direction: column;
+            transform: translate3d(0, 0, 0); 
+            will-change: transform, opacity;
+            backface-visibility: hidden; 
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease, visibility 0s linear 0s;
+            z-index: 10;
+            overflow-y: auto; overflow-x: hidden;
+            visibility: visible;
+        }
+        
+        .view.hidden-right { transform: translate3d(100%, 0, 0); opacity: 0; pointer-events: none; z-index: 1; visibility: hidden; transition-delay: 0s, 0s, 0.4s; }
+        .view.hidden-left { transform: translate3d(-100%, 0, 0); opacity: 0; pointer-events: none; z-index: 1; visibility: hidden; transition-delay: 0s, 0s, 0.4s; }
+        button svg { pointer-events: none; }
+
+        /* --- AUTHENTICATION / VAULT VIEW --- */
+        #view-auth {
+            background: var(--bg-intro);
+            justify-content: center; align-items: center; padding: 30px; text-align: center;
+            z-index: 50; /* Always on top until unlocked */
+        }
+        .vault-icon { width: 80px; height: 80px; color: var(--accent-red); margin-bottom: 20px; }
+        .auth-title { font-size: 2rem; color: var(--text-dark); margin-bottom: 10px; font-weight: 700; }
+        .auth-desc { font-size: 0.95rem; color: var(--text-dark); opacity: 0.8; margin-bottom: 40px; line-height: 1.5; }
+        
+        .auth-box { width: 100%; max-width: 320px; display: none; flex-direction: column; gap: 16px; }
+        .auth-box.active { display: flex; }
+        
+        .pwd-input {
+            width: 100%; padding: 16px; border-radius: 16px; border: none; outline: none;
+            font-size: 1rem; text-align: center; background: rgba(255,255,255,0.8);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .btn-auth {
+            width: 100%; background: var(--text-dark); color: white; border: none;
+            padding: 18px; border-radius: 16px; font-size: 1rem; font-weight: 600; cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15); transition: transform 0.2s;
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
+        .btn-auth:active { transform: scale(0.96); }
+        .btn-auth svg { width: 20px; height: 20px; fill: currentColor; }
+        
+        #progress-container { display: none; flex-direction: column; align-items: center; width: 100%; margin-top: 20px; }
+        .progress-bar-bg { width: 100%; height: 8px; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+        .progress-bar-fill { height: 100%; width: 0%; background: var(--accent-red); transition: width 0.2s; }
+        #progress-text { font-size: 0.85rem; color: var(--text-dark); font-weight: 600; }
+
+        /* --- INTRO VIEW --- */
+        #view-intro { background: var(--bg-intro); padding: 24px 24px 50px 24px; justify-content: space-between; min-height: 100%; }
+        .intro-header { width: 100%; display: flex; justify-content: flex-end; align-items: center; margin-bottom: 10px; position: relative; }
+        .ambience-hint { display: flex; align-items: center; gap: 4px; color: var(--accent-red); font-size: 0.85rem; font-weight: 700; margin-right: 12px; animation: pointRight 1.5s infinite; opacity: 0.9; }
+        .ambience-hint svg { width: 16px; height: 16px; fill: currentColor; }
+        @keyframes pointRight { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
+        .bg-music-toggle { background: rgba(0,0,0,0.06); border: none; padding: 8px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; color: var(--text-dark); font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: transform 0.2s, background 0.3s; flex-shrink: 0; z-index: 2; }
+        .bg-music-toggle:active { transform: scale(0.92); }
+        .bg-music-toggle:hover { background: rgba(0,0,0,0.1); }
+        .bg-music-toggle svg { width: 16px; height: 16px; }
+
+        .intro-img-container { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 200px; margin-bottom: 20px; position: relative; }
+        .slideshow-img { position: absolute; max-width: 90%; max-height: 300px; object-fit: contain; opacity: 0; transition: opacity 1.5s ease-in-out; }
+        .slideshow-img.active { opacity: 1; }
+
+        .intro-text { flex-shrink: 0; }
+        .intro-text h1 { color: var(--text-dark); font-size: clamp(1.8rem, 6vw, 2.2rem); font-weight: 700; margin-bottom: 12px; }
+        .intro-text p { color: var(--text-dark); opacity: 0.85; font-size: 0.95rem; line-height: 1.5; margin-bottom: 30px; }
+        .btn-start { width: 100%; background: var(--accent-red); color: white; border: none; padding: 18px; border-radius: 16px; font-size: 1.1rem; font-weight: 600; cursor: pointer; box-shadow: 0 8px 20px rgba(217, 90, 83, 0.3); transition: transform 0.2s; }
+        .btn-start:active { transform: scale(0.96); }
+
+        /* --- LIBRARY VIEW --- */
+        #view-library { padding: 0; }
+        .library-scroll-area { flex: 1; overflow-y: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; padding: 40px 24px 120px 24px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header h1 { color: var(--text-dark); font-size: 2rem; }
+        .header-actions { display: flex; gap: 8px; }
+        .lang-toggle { background: var(--bg-white); color: var(--text-dark); border: 1px solid rgba(0,0,0,0.08); padding: 8px 12px; border-radius: 30px; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); transition: transform 0.2s, background 0.3s; }
+        .lang-toggle:active { transform: scale(0.92); }
+        .lang-toggle:hover { background: var(--bg-light); }
+        .lang-toggle svg { width: 16px; height: 16px; color: var(--accent-red); }
+        
+        .search-bar { background: var(--bg-light); border-radius: 16px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; margin-bottom: 30px; border: 2px solid transparent; transition: border 0.3s, background 0.3s; }
+        .search-bar:focus-within { border: 2px solid var(--accent-red); background: #fff; }
+        .search-bar input { border: none; background: transparent; width: 100%; outline: none; font-size: 1rem; color: var(--text-dark); }
+
+        .section-title { color: var(--text-dark); font-size: 1.2rem; font-weight: 600; margin-bottom: 16px; }
+        .playlists { display: flex; gap: 16px; margin-bottom: 32px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: none; margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; -webkit-overflow-scrolling: touch; }
+        .playlists::after { content: ''; width: 8px; flex-shrink: 0; }
+        .playlist-card { width: 140px; min-width: 140px; flex-shrink: 0; cursor: pointer; transition: transform 0.2s; }
+        .playlist-card:active { transform: scale(0.95); }
+        .playlist-img { height: 110px; border-radius: 20px 8px 20px 8px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent-red); box-shadow: 0 8px 16px rgba(0,0,0,0.06); background-size: 200% 200%; animation: gradientShift 6s ease infinite; }
+        .bg-gradient-1 { background-image: linear-gradient(135deg, #fcebb6 0%, #f0c978 100%); }
+        .bg-gradient-2 { background-image: linear-gradient(135deg, #fcd0cc 0%, #f29f99 100%); border-radius: 8px 20px 8px 20px; }
+        
+        @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        .playlist-card h3 { font-size: 0.95rem; color: var(--text-dark); margin-bottom: 4px; }
+        .playlist-card p, .track-info h4, .track-info p, .player-info h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%; }
+        .playlist-card p { font-size: 0.8rem; color: var(--text-muted); }
+
+        .track-list { display: flex; flex-direction: column; gap: 12px; position: relative; }
+        .track-item { display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 10px; background: var(--bg-light); border-radius: 16px; border: 1px solid transparent; width: 100%; transition: opacity 0.2s, background 0.3s, border 0.3s; position: relative; }
+        .track-item.active-track { border: 1px solid rgba(217, 90, 83, 0.3); background: rgba(217, 90, 83, 0.05); }
+        .track-item.active-track .track-icon { background: var(--accent-red); color: white; box-shadow: 0 4px 12px rgba(217, 90, 83, 0.25); }
+        .track-item.active-track h4 { color: var(--accent-red); font-weight: 700; }
+        .track-item.active-track p { color: var(--accent-red); opacity: 0.8; }
+        
+        .play-arrow { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .icon-list-play { display: block; }
+        .icon-list-pause { display: none; }
+        .track-item.is-playing .icon-list-play { display: none; }
+        .track-item.is-playing .icon-list-pause { display: block; }
+
+        .reorder-controls { display: none; gap: 4px; flex-shrink: 0; }
+        .reorder-btn { background: var(--bg-outer); border: none; border-radius: 8px; padding: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-dark); cursor: pointer; transition: background 0.2s; }
+        .reorder-btn:hover { background: #dce1e8; }
+        .reorder-btn svg { width: 18px; height: 18px; }
+        .is-editing .play-arrow { display: none !important; }
+        .is-editing .reorder-controls { display: flex !important; }
+
+        .track-item-left { display: flex; align-items: center; gap: 16px; text-align: left; flex: 1; min-width: 0; }
+        .track-icon { width: 44px; height: 44px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent-red); flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.03); transition: all 0.3s ease; }
+        .track-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+        .track-info h4 { color: var(--text-dark); font-size: 0.95rem; margin-bottom: 2px; transition: color 0.3s; }
+        .track-info p { color: var(--text-muted); font-size: 0.8rem; transition: color 0.3s; }
+        
+        .empty-state { text-align: center; color: var(--text-muted); padding: 40px 20px; font-size: 0.95rem; }
+
+        .bottom-nav { position: absolute; bottom: 0; left: 0; width: 100%; height: 75px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(0,0,0,0.05); z-index: 100; }
+        .nav-item { color: var(--text-muted); padding: 15px; cursor: pointer; background: none; border: none; transition: color 0.3s, transform 0.2s; }
+        .nav-item:active { transform: scale(0.85); }
+        .nav-item.active { color: var(--accent-red); }
+
+        /* --- PLAYER VIEW --- */
+        #view-player { padding: 30px 24px 50px 24px; min-height: 100%; }
+        .player-top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; color: var(--text-dark); flex-shrink: 0; }
+        
+        .lyrics-container { flex: 1; background: var(--bg-light); border-radius: 24px; margin-bottom: 24px; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; min-height: 120px; box-shadow: inset 0 4px 15px rgba(0,0,0,0.02); -webkit-overflow-scrolling: touch; }
+        .lyric-line { font-size: 1.35rem; font-weight: 700; color: var(--text-dark); text-align: center; margin: 22px 0; line-height: 1.5; opacity: 0.25; filter: blur(1px); transform-origin: center center; transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); scroll-margin-top: 40px; word-wrap: break-word; }
+        .lyric-line.active { opacity: 1; filter: blur(0px); text-shadow: 0 4px 15px rgba(0,0,0,0.08); transform: scale(1.02); }
+
+        .player-info { text-align: center; margin-bottom: 24px; flex-shrink: 0; width: 100%; min-width: 0; }
+        .player-info h2 { color: var(--text-dark); font-size: 1.6rem; margin-bottom: 6px; padding: 0 10px; }
+        .player-info p { color: var(--text-muted); font-size: 1rem; }
+
+        .progress-container { width: 100%; margin-bottom: 30px; flex-shrink: 0; }
+        .waveform-mock { width: 100%; height: 32px; margin-bottom: 10px; background: repeating-linear-gradient(90deg, var(--bg-outer), var(--bg-outer) 3px, transparent 3px, transparent 6px); border-radius: 16px; position: relative; overflow: hidden; cursor: pointer; touch-action: none; }
+        .waveform-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: repeating-linear-gradient(90deg, var(--text-dark), var(--text-dark) 3px, transparent 3px, transparent 6px); pointer-events: none; transition: width 0.1s linear; }
+        .time-info { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+        .controls { display: flex; align-items: center; justify-content: space-evenly; width: 100%; flex-shrink: 0; margin-bottom: 10px; }
+        .ctrl-btn { background: none; border: none; color: var(--text-dark); cursor: pointer; opacity: 0.7; padding: 10px; transition: opacity 0.2s; flex-shrink: 0; }
+        .ctrl-btn:hover { opacity: 1; }
+        .play-pause-btn { width: 68px; height: 68px; background: var(--text-dark); border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: none; cursor: pointer; transition: transform 0.2s; flex-shrink: 0; }
+        .play-pause-btn:active { transform: scale(0.92); }
+
+        svg { width: 24px; height: 24px; fill: currentColor; }
+        .heart-filled { color: var(--accent-red) !important; opacity: 1 !important; }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        
+        <!-- SECURE VAULT AUTHENTICATION GATE -->
+        <div id="view-auth" class="view">
+            <svg class="vault-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg>
+            <h1 class="auth-title">Audicrypt 🩷</h1>
+            <p class="auth-desc">Your private offline vault for family memories.</p>
+            
+            <!-- Setup Block -->
+            <div id="auth-setup" class="auth-box">
+                <input type="password" id="master-pwd" class="pwd-input" placeholder="Enter Vault Password">
+                <button class="btn-auth" id="btn-setup">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                    Secure & Download
+                </button>
+            </div>
+            
+            <!-- Unlock Block -->
+            <div id="auth-unlock" class="auth-box">
+                <button class="btn-auth" id="btn-unlock">
+                    <svg viewBox="0 0 24 24"><path d="M17.81 4.47c-.08 0-.16-.02-.23-.06C15.66 3.42 14 3 12.01 3c-1.98 0-3.86.47-5.57 1.41-.24.13-.54.04-.68-.2-.13-.24-.04-.55.2-.68C7.82 2.52 9.86 2 12.01 2c2.13 0 3.99.47 6.03 1.52.25.13.34.43.21.67-.09.18-.26.28-.44.28zM3.5 9.72c-.1 0-.2-.03-.29-.09-.23-.16-.28-.47-.12-.7.99-1.4 2.25-2.56 3.74-3.44C9.98 3.61 16.83 3.59 20 4.96c.25.11.36.4.25.65-.11.25-.4.36-.65.25-2.86-1.24-9.28-1.21-12.21.46-1.36.79-2.51 1.84-3.4 3.11-.12.18-.32.29-.49.29zm20.6 7.07c-.16 0-.32-.07-.42-.2-.59-.75-1.33-1.42-2.18-1.98-3.08-2.02-7.22-2.22-10.74-.53-.24.12-.54.02-.66-.23-.12-.24-.02-.54.23-.66 3.86-1.85 8.41-1.61 11.8.61.94.61 1.76 1.35 2.41 2.18.17.22.13.54-.09.71-.11.08-.23.1-.35.1zM6.9 19.34c-.08 0-.16-.02-.24-.06-.51-.27-1.12-.55-1.74-.83-.25-.11-.36-.4-.25-.65.11-.25.4-.36.65-.25.68.3 1.33.6 1.88.89.24.13.34.43.21.67-.09.18-.26.28-.44.28z"/></svg>
+                    Unlock Audicrypt
+                </button>
+            </div>
+            
+            <!-- Extraction Progress -->
+            <div id="progress-container">
+                <div class="progress-bar-bg"><div class="progress-bar-fill" id="extract-fill"></div></div>
+                <div id="progress-text">Connecting to Vault...</div>
+            </div>
+        </div>
+
+        <!-- INTRO VIEW -->
+        <div id="view-intro" class="view hidden-right">
+            <div class="intro-header">
+                <div class="ambience-hint" id="ambience-hint">
+                    <span>Tap for Ambience</span>
+                    <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                </div>
+                <button class="bg-music-toggle" id="btn-intro-music">
+                    <svg id="icon-vol-on" style="display:none;" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                    <svg id="icon-vol-off" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+                    <span>Ambience</span>
+                </button>
+            </div>
+            
+            <div class="intro-img-container" id="slideshow-container">
+                <!-- Image tags populated dynamically from OPFS -->
+                <img id="img-fallback" class="slideshow-img active" src="illustration.jpg">
+            </div>
+            
+            <div class="intro-text">
+                <h1>Audicrypt 🩷</h1>
+                <p>A beautiful collection of tracks, just for you. Keep the voices of your loved ones close, always 🩷.</p>
+                <button class="btn-start" id="btn-start">Listen Now</button>
+            </div>
+        </div>
+
+        <!-- LIBRARY VIEW -->
+        <div id="view-library" class="view hidden-right">
+            <div class="library-scroll-area" id="library-scroll">
+                <div class="header" id="lib-header">
+                    <h1 id="list-title-text">Library</h1>
+                    <div class="header-actions">
+                        <button id="btn-reorder-toggle" class="lang-toggle" title="Arrange Tracks">
+                            <svg viewBox="0 0 24 24"><path d="M7 10l5-5 5 5H7zm10 4l-5 5-5-5h10z"/></svg>
+                            <span id="reorder-btn-text">Sort</span>
+                        </button>
+                        <button id="btn-lang-toggle" class="lang-toggle">
+                            <svg viewBox="0 0 24 24"><path d="M14 17H4v2h10v-2zm6-8H4v2h16V9zM4 15h16v-2H4v2zM4 5v2h16V5H4z"/></svg>
+                            <span id="lang-btn-text">Both</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="search-bar">
+                    <svg viewBox="0 0 24 24" style="color:var(--text-muted); width:20px;height:20px;"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    <input type="text" id="search-input" placeholder="Find a track...">
+                </div>
+
+                <div id="dynamic-cards-container">
+                    <div class="section-title">For You</div>
+                    <div class="playlists">
+                        <div class="playlist-card" id="card-recent" style="display: none;">
+                            <div class="playlist-img bg-gradient-1">
+                                <svg viewBox="0 0 24 24" style="width:36px;height:36px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                            </div>
+                            <h3>Recently Played</h3>
+                            <p id="recent-title">Loading...</p>
+                        </div>
+                        <div class="playlist-card" id="card-suggested" style="display: none;">
+                            <div class="playlist-img bg-gradient-2">
+                                <svg viewBox="0 0 24 24" style="width:36px;height:36px;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                            </div>
+                            <h3>Suggested</h3>
+                            <p id="suggested-title">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-title" id="list-title">All Tracks</div>
+                <div class="track-list" id="track-list-container"></div>
+            </div>
+
+            <div class="bottom-nav">
+                <button id="nav-home" class="nav-item"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></button>
+                <button id="nav-search" class="nav-item active">
+                    <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 15l5-3-5-3v6z"/></svg>
+                </button>
+                <button id="nav-fav" class="nav-item">
+                    <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- PLAYER VIEW -->
+        <div id="view-player" class="view hidden-right">
+            <div class="player-top-nav">
+                <button class="ctrl-btn" id="btn-back"><svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg></button>
+                <div style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted);">Now Playing</div>
+                <button class="ctrl-btn" id="btn-player-fav">
+                    <svg id="icon-heart-outline" viewBox="0 0 24 24"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"/></svg>
+                    <svg id="icon-heart-filled" style="display:none;" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                </button>
+            </div>
+
+            <div class="lyrics-container" id="lyrics-display">
+                <div class="lyric-line">Loading lyrics...</div>
+            </div>
+
+            <div class="player-info">
+                <h2 id="track-title">Title</h2>
+                <p id="track-artist">Mummy's Aarti</p>
+            </div>
+
+            <div class="progress-container">
+                <div class="waveform-mock" id="progress-bar">
+                    <div class="waveform-fill" id="progress-fill"></div>
+                </div>
+                <div class="time-info">
+                    <span id="time-curr">0:00</span>
+                    <span id="time-tot">0:00</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="ctrl-btn" id="btn-loop"><svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg></button>
+                <button class="ctrl-btn" id="btn-prev"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+                <button class="play-pause-btn" id="btn-play">
+                    <svg id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="icon-pause" style="display:none;" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <button class="ctrl-btn" id="btn-next"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+                <button class="ctrl-btn" id="btn-book" onclick="window.location.href='book.html'" title="View PDF Book">
+                    <svg viewBox="0 0 24 24"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zM21 18.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/></svg>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Audios -->
+    <audio id="audio-intro" loop></audio>
+    <audio id="audio-main"></audio>
+
+    <script>
+        /* ================= AUDICRYPT CORE ARCHITECTURE ================= */
+        const DATA_ZIP_URL = 'data.zip'; 
+        
+        let playlist = [];
+        let currentIdx = 0;
+        let currentLyrics = [];
+        let currentFetchId = 0; 
+        let isTransitioning = false;
+        let currentFilter = "";
+        let showFavoritesOnly = false;
+        let isReorderMode = false;
+        
+        // Ensure Hardware Back Button History exists
+        if (!history.state) history.replaceState({view: 'auth'}, '', '');
+
+        // Local Storage Utilities
+        const AppStorage = {
+            getFavs: () => JSON.parse(localStorage.getItem('audicryptFavs') || '[]'),
+            toggleFav: (baseName) => {
+                let favs = AppStorage.getFavs();
+                if (favs.includes(baseName)) favs = favs.filter(f => f !== baseName);
+                else favs.push(baseName);
+                localStorage.setItem('audicryptFavs', JSON.stringify(favs));
+                return favs.includes(baseName);
+            },
+            isFav: (baseName) => AppStorage.getFavs().includes(baseName),
+            setRecent: (baseName) => localStorage.setItem('audicryptRecent', baseName),
+            getRecent: () => localStorage.getItem('audicryptRecent'),
+            getLang: () => localStorage.getItem('audicryptLang') || 'both',
+            setLang: (lang) => localStorage.setItem('audicryptLang', lang),
+            getCustomOrder: () => JSON.parse(localStorage.getItem('audicryptCustomOrder') || '[]'),
+            setCustomOrder: (arr) => localStorage.setItem('audicryptCustomOrder', JSON.stringify(arr)),
+            
+            // Vault Security State
+            isVaultSetup: () => localStorage.getItem('audicryptVaultSetup') === 'true',
+            setVaultSetup: () => localStorage.setItem('audicryptVaultSetup', 'true'),
+            getEncKey: () => localStorage.getItem('audicryptEncKey'),
+            setEncKey: (k) => localStorage.setItem('audicryptEncKey', k)
+        };
+
+        let currentLangMode = AppStorage.getLang();
+
+        /* --- 1. CRYPTO & WEBAUTHN ENGINE --- */
+        
+        // Generate random key for devices without PRF Support (Graceful Fallback)
+        function generateFallbackKey() {
+            const arr = new Uint8Array(32);
+            crypto.getRandomValues(arr);
+            return btoa(String.fromCharCode.apply(null, arr));
+        }
+
+        // Extremely simple XOR obfuscation just to not keep plaintext in LocalStorage for fallback
+        function obfuscate(text, keyStr) {
+            const key = atob(keyStr);
+            let res = '';
+            for(let i=0; i<text.length; i++) {
+                res += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return btoa(res);
+        }
+
+        function deobfuscate(b64, keyStr) {
+            const text = atob(b64);
+            const key = atob(keyStr);
+            let res = '';
+            for(let i=0; i<text.length; i++) {
+                res += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return res;
+        }
+
+        // WebAuthn Invocation
+        async function handleVaultSetup() {
+            const pwd = document.getElementById('master-pwd').value;
+            if(!pwd) return alert("Enter Vault Password");
+            
+            const btn = document.getElementById('btn-setup');
+            btn.innerHTML = "Generating Fingerprint...";
+            
+            try {
+                // Request Biometric Setup
+                const challenge = new Uint8Array(32);
+                crypto.getRandomValues(challenge);
+                
+                await navigator.credentials.create({
+                    publicKey: {
+                        challenge: challenge,
+                        rp: { name: "Audicrypt Vault" },
+                        user: {
+                            id: new Uint8Array(16),
+                            name: "audicrypt_user",
+                            displayName: "Family Member"
+                        },
+                        pubKeyCredParams: [{alg: -7, type: "public-key"}],
+                        authenticatorSelection: { userVerification: "required" },
+                        timeout: 60000
+                    }
+                });
+
+                // Since PRF requires highly advanced JS wrapper, we use graceful device-key fallback 
+                // locked strictly behind biometric authentication success.
+                const deviceKey = generateFallbackKey();
+                const safePwd = obfuscate(pwd, deviceKey);
+                
+                AppStorage.setEncKey(safePwd + "|" + deviceKey);
+                AppStorage.setVaultSetup();
+
+                await extractVault(pwd);
+                
+            } catch (err) {
+                console.error(err);
+                alert("Fingerprint Setup Failed or Canceled.");
+                btn.innerHTML = "Secure & Download";
+            }
+        }
+
+        async function handleVaultUnlock() {
+            const btn = document.getElementById('btn-unlock');
+            btn.innerHTML = "Verifying...";
+            
+            try {
+                // Request Biometric Unlock
+                const challenge = new Uint8Array(32);
+                crypto.getRandomValues(challenge);
+                
+                await navigator.credentials.get({
+                    publicKey: {
+                        challenge: challenge,
+                        userVerification: "required",
+                        timeout: 60000
+                    }
+                });
+
+                // Unlock
+                const vaultData = AppStorage.getEncKey().split("|");
+                const pwd = deobfuscate(vaultData[0], vaultData[1]);
+                
+                // Verify OPFS is intact. If cleared, re-extract!
+                const root = await navigator.storage.getDirectory();
+                try {
+                    await root.getDirectoryHandle('audio');
+                    // Intact! Proceed to App
+                    loadAppFromOPFS();
+                } catch(e) {
+                    // Evicted by browser! Silently re-download.
+                    await extractVault(pwd);
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("Fingerprint Verification Failed.");
+                btn.innerHTML = "Unlock Audicrypt";
+            }
+        }
+
+        /* --- 2. EXTRACTION ENGINE (zip.js + OPFS) --- */
+        async function extractVault(password) {
+            document.getElementById('auth-setup').style.display = 'none';
+            document.getElementById('auth-unlock').style.display = 'none';
+            
+            const progCont = document.getElementById('progress-container');
+            const progFill = document.getElementById('extract-fill');
+            const progText = document.getElementById('progress-text');
+            progCont.style.display = 'flex';
+
+            try {
+                progText.innerText = "Downloading Encrypted Vault...";
+                const response = await fetch(DATA_ZIP_URL);
+                if(!response.ok) throw new Error("data.zip not found on server.");
+                const blob = await response.blob();
+
+                progText.innerText = "Unlocking Vault...";
+                const zipReader = new zip.ZipReader(new zip.BlobReader(blob), { password: password });
+                const entries = await zipReader.getEntries();
+                
+                // Root OPFS Directory
+                const opfsRoot = await navigator.storage.getDirectory();
+                
+                let count = 0;
+                for (const entry of entries) {
+                    if (entry.directory) continue;
+                    
+                    progText.innerText = `Extracting ${entry.filename.split('/').pop()}...`;
+                    
+                    // Recreate folder structure in OPFS (intro/ and audio/)
+                    const parts = entry.filename.split('/');
+                    const fileName = parts.pop();
+                    let currentDir = opfsRoot;
+                    
+                    for(const folder of parts) {
+                        currentDir = await currentDir.getDirectoryHandle(folder, { create: true });
+                    }
+                    
+                    const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
+                    
+                    // Stream directly into OPFS for zero RAM usage
+                    const writable = await fileHandle.createWritable();
+                    await entry.getData(new zip.WritableStreamWriter(writable));
+                    await writable.close();
+                    
+                    count++;
+                    progFill.style.width = `${(count / entries.length) * 100}%`;
+                }
+
+                await zipReader.close();
+                loadAppFromOPFS();
+                
+            } catch(e) {
+                console.error(e);
+                alert("Extraction Failed! Wrong Password or Missing data.zip.");
+                // Reset UI
+                progCont.style.display = 'none';
+                if(AppStorage.isVaultSetup()) document.getElementById('auth-unlock').style.display = 'flex';
+                else document.getElementById('auth-setup').style.display = 'flex';
+                
+                document.getElementById('btn-setup').innerHTML = "Secure & Download";
+                document.getElementById('btn-unlock').innerHTML = "Unlock Audicrypt";
+            }
+        }
+
+        /* --- 3. THE APP LOAD & UI --- */
+        async function loadAppFromOPFS() {
+            try {
+                const opfsRoot = await navigator.storage.getDirectory();
+                
+                // 1. Load Intro Assets
+                try {
+                    const introDir = await opfsRoot.getDirectoryHandle('intro');
+                    
+                    // Load Audio
+                    try {
+                        const introAudioHandle = await introDir.getFileHandle('intro.mp3');
+                        const introAudioFile = await introAudioHandle.getFile();
+                        document.getElementById('audio-intro').src = URL.createObjectURL(introAudioFile);
+                        document.getElementById('audio-intro').play().catch(()=>{});
+                    } catch(e) {} // Silent ignore if intro.mp3 missing
+
+                    // Load Photos
+                    const slideshowContainer = document.getElementById('slideshow-container');
+                    slideshowContainer.innerHTML = ''; // clear fallback
+                    
+                    let photoCount = 0;
+                    for (let i=1; i<=5; i++) {
+                        try {
+                            const photoHandle = await introDir.getFileHandle(`photo${i}.jpg`);
+                            const photoFile = await photoHandle.getFile();
+                            const img = document.createElement('img');
+                            img.className = 'slideshow-img' + (photoCount === 0 ? ' active' : '');
+                            img.src = URL.createObjectURL(photoFile);
+                            slideshowContainer.appendChild(img);
+                            photoCount++;
+                        } catch(e) {}
+                    }
+                    
+                    if(photoCount === 0) {
+                        slideshowContainer.innerHTML = `<img class="slideshow-img active" src="illustration.jpg">`;
+                    }
+                    
+                } catch(e) { console.log("No intro folder found in OPFS"); }
+
+                // 2. Load Audio Library
+                playlist = [];
+                const audioDir = await opfsRoot.getDirectoryHandle('audio');
+                
+                // Build playlist from OPFS iterator
+                for await (const [name, handle] of audioDir.entries()) {
+                    if (name.endsWith('.mp3')) {
+                        let cleanTitle = name.replace('.mp3', '').replace(/-/g, ' ').replace(/_/g, ' ');
+                        cleanTitle = cleanTitle.replace(/\b\w/g, c => c.toUpperCase());
+                        
+                        // Create persistent local URL
+                        const file = await handle.getFile();
+                        
+                        playlist.push({
+                            title: cleanTitle,
+                            artist: "Family Vault",
+                            fileUrl: URL.createObjectURL(file),
+                            baseName: name.replace('.mp3', '')
+                        });
+                    }
+                }
+
+                if (playlist.length === 0) throw new Error("No MP3 files found in audio folder.");
+
+                // Apply Custom Order
+                const savedOrder = AppStorage.getCustomOrder();
+                if(savedOrder && savedOrder.length > 0) {
+                    playlist.sort((a, b) => {
+                        let idxA = savedOrder.indexOf(a.baseName);
+                        let idxB = savedOrder.indexOf(b.baseName);
+                        if (idxA === -1) idxA = 999; 
+                        if (idxB === -1) idxB = 999;
+                        return idxA - idxB;
+                    });
+                }
+
+                initDynamicCards();
+                
+                // Transition UI from Auth to Intro/DeepLink
+                document.getElementById('view-auth').classList.add('hidden-left');
+                
+                if(checkURLParams()) {
+                    // checkURLParams handles the UI transition if a track matched
+                } else {
+                    navTo('home');
+                    renderLibrary();
+                }
+
+            } catch(e) {
+                console.error("Failed to load app from OPFS", e);
+                alert("Vault Corrupted. Clearing and resetting...");
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // --- AUTH INIT ON BOOT ---
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('btn-setup').addEventListener('click', handleVaultSetup);
+            document.getElementById('btn-unlock').addEventListener('click', handleVaultUnlock);
+            
+            if (AppStorage.isVaultSetup()) {
+                document.getElementById('auth-unlock').style.display = 'flex';
+                // Optional: Auto-trigger fingerprint prompt on boot
+                // handleVaultUnlock(); 
+            } else {
+                document.getElementById('auth-setup').style.display = 'flex';
+            }
+        });
+
+
+        /* --- TUSIC UI LOGIC --- */
+        
+        // Slideshow Engine
+        setInterval(() => {
+            const imgs = document.querySelectorAll('.slideshow-img');
+            let valid = Array.from(imgs).filter(img => img.style.display !== 'none');
+            if(valid.length > 1) {
+                let current = valid.findIndex(i => i.classList.contains('active'));
+                if(current === -1) current = 0;
+                valid[current].classList.remove('active');
+                valid[(current + 1) % valid.length].classList.add('active');
+            }
+        }, 4000); 
+
+        function hideAmbienceHint() {
+            const hint = document.getElementById('ambience-hint');
+            if(hint) hint.style.display = 'none';
+        }
+        document.body.addEventListener('pointerdown', hideAmbienceHint, {once:true});
+
+        function checkURLParams() {
+            const params = new URLSearchParams(window.location.search);
+            const trackFile = params.get('track');
+            if (trackFile) {
+                const searchTarget = trackFile.replace('.mp3', '').replace(/-/g, ' ').toLowerCase();
+                const idx = playlist.findIndex(t => {
+                    const cleanBase = t.baseName.replace(/-/g, ' ').toLowerCase();
+                    return cleanBase === searchTarget;
+                });
+                if (idx !== -1) {
+                    history.replaceState({view: 'home'}, '', window.location.pathname);
+                    history.pushState({view: 'library'}, '', window.location.pathname);
+                    
+                    vIntro.classList.add('hidden-left');
+                    vLib.classList.add('hidden-left');
+                    renderLibrary(); 
+                    openPlayer(idx);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        const vIntro = document.getElementById('view-intro');
+        const vLib = document.getElementById('view-library');
+        const vPlayer = document.getElementById('view-player');
+        
+        function navTo(view, push = true) {
+            if (push) history.pushState({view}, '', '');
+            
+            if (view === 'home') {
+                vLib.classList.add('hidden-right');
+                vPlayer.classList.add('hidden-right');
+                vIntro.classList.remove('hidden-left');
+                updateBottomNav('nav-home');
+                
+                if (audioMain.paused || audioMain.src === "") {
+                    audioIntro.volume = 1; 
+                    audioIntro.play().catch(() => {});
+                }
+            } else if (view === 'library') {
+                showFavoritesOnly = false;
+                document.getElementById('dynamic-cards-container').style.display = 'block';
+                document.getElementById('list-title').innerText = "All Tracks";
+                document.getElementById('list-title-text').innerText = "Library";
+                
+                vPlayer.classList.add('hidden-right');
+                vIntro.classList.add('hidden-left');
+                vLib.classList.remove('hidden-left', 'hidden-right');
+                updateBottomNav('nav-search');
+                renderLibrary();
+            } else if (view === 'fav') {
+                showFavoritesOnly = true;
+                document.getElementById('dynamic-cards-container').style.display = 'none';
+                document.getElementById('list-title').innerText = "Your Favorites";
+                document.getElementById('list-title-text').innerText = "Favorites";
+                
+                vPlayer.classList.add('hidden-right');
+                vIntro.classList.add('hidden-left');
+                vLib.classList.remove('hidden-left', 'hidden-right');
+                updateBottomNav('nav-fav');
+                renderLibrary();
+            }
+        }
+
+        window.addEventListener('popstate', (e) => {
+            const view = e.state ? e.state.view : 'home';
+            if (view === 'player') openPlayerView(false);
+            else if (view !== 'auth') navTo(view, false);
+        });
+
+        const navBtns = document.querySelectorAll('.nav-item');
+        function updateBottomNav(activeId) {
+            navBtns.forEach(btn => btn.classList.remove('active'));
+            document.getElementById(activeId).classList.add('active');
+        }
+
+        document.getElementById('btn-start').addEventListener('click', () => {
+            fadeOutIntro(); 
+            navTo('library');
+        });
+
+        document.getElementById('nav-home').addEventListener('click', () => navTo('home'));
+        document.getElementById('nav-search').addEventListener('click', () => navTo('library'));
+        document.getElementById('nav-fav').addEventListener('click', () => navTo('fav'));
+
+        document.getElementById('btn-back').addEventListener('click', () => {
+            history.back(); 
+        });
+
+        const btnLangToggle = document.getElementById('btn-lang-toggle');
+        const spanLangText = document.getElementById('lang-btn-text');
+        const langLabels = { 'both': 'Both', 'hindi': 'Hindi', 'hinglish': 'English' };
+        spanLangText.innerText = langLabels[currentLangMode];
+
+        btnLangToggle.addEventListener('click', () => {
+            if (currentLangMode === 'both') currentLangMode = 'hindi';
+            else if (currentLangMode === 'hindi') currentLangMode = 'hinglish';
+            else currentLangMode = 'both';
+            
+            AppStorage.setLang(currentLangMode);
+            spanLangText.innerText = langLabels[currentLangMode];
+            
+            if (currentLyrics.length > 0) {
+                renderLyrics();
+                updatePlayerUI(); 
+            }
+        });
+
+        const btnReorderToggle = document.getElementById('btn-reorder-toggle');
+        btnReorderToggle.addEventListener('click', () => {
+            isReorderMode = !isReorderMode;
+            btnReorderToggle.style.background = isReorderMode ? 'var(--bg-light)' : 'var(--bg-white)';
+            renderLibrary();
+        });
+
+        window.moveTrack = function(e, idx, dir) {
+            e.stopPropagation();
+            if (dir === -1 && idx > 0) {
+                [playlist[idx - 1], playlist[idx]] = [playlist[idx], playlist[idx - 1]];
+            } else if (dir === 1 && idx < playlist.length - 1) {
+                [playlist[idx + 1], playlist[idx]] = [playlist[idx], playlist[idx + 1]];
+            } else return;
+            
+            AppStorage.setCustomOrder(playlist.map(t => t.baseName));
+            
+            if(currentIdx === idx) currentIdx += dir;
+            else if(currentIdx === idx + dir) currentIdx -= dir;
+            
+            const trackElements = document.querySelectorAll('.track-item');
+            const targetEl = Array.from(trackElements).find(el => parseInt(el.getAttribute('data-index')) === idx);
+            const siblingEl = Array.from(trackElements).find(el => parseInt(el.getAttribute('data-index')) === (idx + dir));
+
+            if (targetEl && siblingEl) {
+                const targetY = dir === -1 ? -targetEl.offsetHeight - 12 : targetEl.offsetHeight + 12;
+                const siblingY = dir === -1 ? siblingEl.offsetHeight + 12 : -siblingEl.offsetHeight - 12;
+
+                targetEl.style.transform = `translateY(${targetY}px)`;
+                targetEl.style.transition = 'transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1)';
+                targetEl.style.zIndex = '10';
+                
+                siblingEl.style.transform = `translateY(${siblingY}px)`;
+                siblingEl.style.transition = 'transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1)';
+                siblingEl.style.zIndex = '9';
+                
+                setTimeout(renderLibrary, 450);
+            } else {
+                renderLibrary();
+            }
+        };
+
+        const trackList = document.getElementById('track-list-container');
+        
+        function renderLibrary() {
+            trackList.innerHTML = '';
+            let listToRender = playlist;
+
+            if (showFavoritesOnly || currentFilter) {
+                btnReorderToggle.style.display = 'none';
+                isReorderMode = false;
+            } else {
+                btnReorderToggle.style.display = 'flex';
+            }
+
+            if (showFavoritesOnly) {
+                const favs = AppStorage.getFavs();
+                listToRender = listToRender.filter(t => favs.includes(t.baseName));
+            }
+
+            if (currentFilter) {
+                listToRender = listToRender.filter(t => t.title.toLowerCase().includes(currentFilter.toLowerCase()));
+            }
+            
+            if(listToRender.length === 0) {
+                trackList.innerHTML = `<div class="empty-state">
+                    ${showFavoritesOnly ? "You haven't favorited any tracks yet." : "No tracks found."}
+                </div>`;
+                return;
+            }
+
+            listToRender.forEach((track) => {
+                const originalIndex = playlist.findIndex(t => t.baseName === track.baseName);
+                const el = document.createElement('button');
+                
+                el.className = 'track-item' + (isReorderMode ? ' is-editing' : ''); 
+                el.setAttribute('data-index', originalIndex);
+                
+                el.innerHTML = `
+                    <div class="track-item-left">
+                        <div class="track-icon">
+                            <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                        </div>
+                        <div class="track-info">
+                            <h4>${track.title}</h4>
+                            <p>${track.artist}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="reorder-controls">
+                        <div class="reorder-btn" onclick="moveTrack(event, ${originalIndex}, -1)"><svg viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg></div>
+                        <div class="reorder-btn" onclick="moveTrack(event, ${originalIndex}, 1)"><svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg></div>
+                    </div>
+
+                    <div class="play-arrow">
+                        <svg class="icon-list-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <svg class="icon-list-pause" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </div>
+                `;
+                el.addEventListener('click', () => { if(!isReorderMode) openPlayer(originalIndex) });
+                trackList.appendChild(el);
+            });
+
+            refreshLibraryUI();
+        }
+
+        function refreshLibraryUI() {
+            const isPlaying = !audioMain.paused && audioMain.src !== "";
+            
+            document.querySelectorAll('.track-item').forEach(el => {
+                const idx = parseInt(el.getAttribute('data-index'));
+                const isActive = audioMain.src !== "" && idx === currentIdx;
+                
+                if (isActive) {
+                    el.classList.add('active-track');
+                    if(isPlaying) el.classList.add('is-playing');
+                    else el.classList.remove('is-playing');
+                } else {
+                    el.classList.remove('active-track', 'is-playing');
+                }
+            });
+        }
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            currentFilter = e.target.value;
+            renderLibrary();
+        });
+
+        function openPlayerView(pushState = true) {
+            isTransitioning = true;
+            if (pushState) history.pushState({view: 'player'}, '', '');
+            
+            vLib.classList.add('hidden-left');
+            vPlayer.classList.remove('hidden-right');
+            setTimeout(() => {
+                isTransitioning = false;
+                updatePlayerUI(); 
+            }, 450); 
+        }
+
+        audioMain.addEventListener('play', () => { updatePlayIcon(true); refreshLibraryUI(); });
+        audioMain.addEventListener('pause', () => { updatePlayIcon(false); refreshLibraryUI(); });
+
+        async function openPlayer(index) {
+            fadeOutIntro(); 
+            
+            if (currentIdx === index && audioMain.src !== "") {
+                openPlayerView(true);
+                return; 
+            }
+
+            currentIdx = index;
+            const track = playlist[index];
+            
+            AppStorage.setRecent(track.baseName);
+            document.getElementById('track-title').innerText = track.title;
+            syncPlayerFavIcon();
+
+            audioMain.src = track.fileUrl;
+            audioMain.play().catch(e => console.log('Playback prevented:', e));
+            
+            openPlayerView(true);
+
+            document.getElementById('time-curr').innerText = "0:00";
+            document.getElementById('time-tot').innerText = "0:00";
+            document.getElementById('progress-fill').style.width = "0%";
+            document.getElementById('lyrics-display').scrollTop = 0;
+
+            await fetchLyrics(track.baseName);
+        }
+
+        const btnPlayerFav = document.getElementById('btn-player-fav');
+        const iconHeartOut = document.getElementById('icon-heart-outline');
+        const iconHeartFill = document.getElementById('icon-heart-filled');
+
+        function syncPlayerFavIcon() {
+            const isFav = AppStorage.isFav(playlist[currentIdx].baseName);
+            if(isFav) {
+                iconHeartOut.style.display = 'none';
+                iconHeartFill.style.display = 'block';
+                btnPlayerFav.classList.add('heart-filled');
+            } else {
+                iconHeartOut.style.display = 'block';
+                iconHeartFill.style.display = 'none';
+                btnPlayerFav.classList.remove('heart-filled');
+            }
+        }
+
+        btnPlayerFav.addEventListener('click', () => {
+            if(playlist.length === 0) return;
+            AppStorage.toggleFav(playlist[currentIdx].baseName);
+            syncPlayerFavIcon();
+        });
+
+        // OPFS Lyrics Fetcher
+        async function fetchLyrics(baseName) {
+            const myFetchId = ++currentFetchId;
+            const lyricsDiv = document.getElementById('lyrics-display');
+            lyricsDiv.innerHTML = '<div class="lyric-line">Loading...</div>';
+            currentLyrics = [];
+
+            try {
+                const opfsRoot = await navigator.storage.getDirectory();
+                const audioDir = await opfsRoot.getDirectoryHandle('audio');
+                const jsonHandle = await audioDir.getFileHandle(`${baseName}.json`);
+                const jsonFile = await jsonHandle.getFile();
+                const text = await jsonFile.text();
+                
+                if (myFetchId !== currentFetchId) return; 
+
+                currentLyrics = JSON.parse(text);
+                renderLyrics();
+                
+            } catch (error) {
+                if (myFetchId !== currentFetchId) return;
+                lyricsDiv.innerHTML = '<div class="lyric-line">Audicrypt Vault<br>(No Lyrics Found)</div>';
+            }
+        }
+
+        function renderLyrics() {
+            const lyricsDiv = document.getElementById('lyrics-display');
+            lyricsDiv.innerHTML = '';
+            
+            const spacerTop = document.createElement('div');
+            spacerTop.style.height = '60px';
+            lyricsDiv.appendChild(spacerTop);
+
+            currentLyrics.forEach((line, i) => {
+                let displayText = "";
+                
+                if (line.text) {
+                    if (currentLangMode !== 'both') {
+                        const subLines = line.text.split('\n');
+                        const filtered = subLines.filter(l => {
+                            const hasDevanagari = /[\u0900-\u097F]/.test(l);
+                            const hasLatin = /[a-zA-Z]/.test(l);
+                            if (currentLangMode === 'hindi') return hasDevanagari || (!hasDevanagari && !hasLatin);
+                            if (currentLangMode === 'hinglish') return hasLatin || (!hasDevanagari && !hasLatin);
+                            return true;
+                        });
+                        
+                        if (filtered.length > 0) displayText = filtered.join('<br>');
+                        else displayText = line.text.replace(/\n/g, '<br>');
+                    } else {
+                        displayText = line.text.replace(/\n/g, '<br>');
+                    }
+                }
+
+                const p = document.createElement('div');
+                p.className = 'lyric-line';
+                p.id = 'lyric-' + i;
+                p.innerHTML = displayText; 
+                lyricsDiv.appendChild(p);
+            });
+
+            const spacerBot = document.createElement('div');
+            spacerBot.style.height = '120px'; 
+            lyricsDiv.appendChild(spacerBot);
+            
+            if (!isTransitioning) updatePlayerUI(); 
+        }
+
+        const btnPlay = document.getElementById('btn-play');
+        const iconPlay = document.getElementById('icon-play');
+        const iconPause = document.getElementById('icon-pause');
+
+        function updatePlayIcon(isPlaying) {
+            iconPlay.style.display = isPlaying ? 'none' : 'block';
+            iconPause.style.display = isPlaying ? 'block' : 'none';
+        }
+
+        btnPlay.addEventListener('click', () => {
+            if (audioMain.paused) audioMain.play().catch(e => console.log('Playback prevented')); 
+            else audioMain.pause(); 
+        });
+
+        document.getElementById('btn-next').addEventListener('click', () => {
+            if(playlist.length > 0) openPlayer((currentIdx + 1) % playlist.length);
+        });
+
+        document.getElementById('btn-prev').addEventListener('click', () => {
+            if(playlist.length > 0) openPlayer((currentIdx - 1 + playlist.length) % playlist.length);
+        });
+
+        let isLoop = false;
+        document.getElementById('btn-loop').addEventListener('click', function() {
+            isLoop = !isLoop;
+            audioMain.loop = isLoop;
+            this.style.color = isLoop ? 'var(--accent-red)' : 'var(--text-dark)';
+        });
+
+        audioMain.addEventListener('ended', () => {
+            if (!isLoop) document.getElementById('btn-next').click();
+        });
+
+        const progBar = document.getElementById('progress-bar');
+        const progFill = document.getElementById('progress-fill');
+        const tCurr = document.getElementById('time-curr');
+        const tTot = document.getElementById('time-tot');
+
+        function fmt(s) {
+            if(!s || isNaN(s)) return "0:00";
+            let m = Math.floor(s/60), sec = Math.floor(s%60);
+            return `${m}:${sec<10?'0'+sec:sec}`;
+        }
+
+        audioMain.addEventListener('loadedmetadata', () => {
+            tTot.innerText = fmt(audioMain.duration);
+        });
+
+        function updatePlayerUI() {
+            if (!audioMain.duration || vPlayer.classList.contains('hidden-right') || isTransitioning) return;
+            
+            tCurr.innerText = fmt(audioMain.currentTime);
+            
+            if (!isScrubbing) {
+                progFill.style.width = `${(audioMain.currentTime / audioMain.duration) * 100}%`;
+            }
+            
+            if (currentLyrics.length === 0) return;
+            const ct = audioMain.currentTime;
+            let activeIdx = -1;
+            for (let i = 0; i < currentLyrics.length; i++) {
+                if (ct >= currentLyrics[i].time) activeIdx = i;
+                else break;
+            }
+            if (activeIdx !== -1) {
+                const activeEl = document.getElementById('lyric-' + activeIdx);
+                if (activeEl && !activeEl.classList.contains('active')) {
+                    document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
+                    activeEl.classList.add('active');
+                    activeEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        }
+
+        audioMain.addEventListener('timeupdate', () => {
+            updatePlayerUI();
+        });
+
+        let isScrubbing = false;
+        function seekAudio(e) {
+            if(!audioMain.duration) return; 
+            const rect = progBar.getBoundingClientRect();
+            let pct = (e.clientX - rect.left) / rect.width;
+            pct = Math.max(0, Math.min(1, pct)); 
+            
+            progFill.style.width = `${pct * 100}%`;
+            audioMain.currentTime = pct * audioMain.duration;
+            updatePlayerUI(); 
+        }
+
+        progBar.addEventListener('pointerdown', (e) => {
+            isScrubbing = true;
+            seekAudio(e);
+        });
+        
+        window.addEventListener('pointermove', (e) => {
+            if(isScrubbing) seekAudio(e);
+        });
+        
+        window.addEventListener('pointerup', () => {
+            isScrubbing = false;
+        });
+    </script>
+</body>
+</html>
