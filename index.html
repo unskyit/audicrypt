@@ -834,7 +834,7 @@
             if (view === 'home') {
                 vLib.classList.add('hidden-right');
                 vPlayer.classList.add('hidden-right');
-                vIntro.classList.remove('hidden-left');
+                vIntro.classList.remove('hidden-left', 'hidden-right'); // <--- Fixed!
                 updateBottomNav('nav-home');
                 
                 const audioMain = document.getElementById('audio-main');
