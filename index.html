@@ -408,6 +408,34 @@
 
         let currentLangMode = AppStorage.getLang();
 
+        /* --- DYNAMIC CARDS SETUP --- */
+        function initDynamicCards() {
+            const recentBase = AppStorage.getRecent();
+            const cardRecent = document.getElementById('card-recent');
+            const cardSuggested = document.getElementById('card-suggested');
+            
+            // 1. Setup "Recently Played" Card
+            if (recentBase && playlist.length > 0) {
+                const recentTrack = playlist.find(t => t.baseName === recentBase);
+                if (recentTrack) {
+                    cardRecent.style.display = 'block';
+                    document.getElementById('recent-title').innerText = recentTrack.title;
+                    cardRecent.onclick = () => openPlayer(playlist.findIndex(t => t.baseName === recentBase));
+                }
+            }
+            
+            // 2. Setup "Suggested" Card
+            if (playlist.length > 1) {
+                cardSuggested.style.display = 'block';
+                let pool = playlist.filter(t => t.baseName !== recentBase);
+                if (pool.length === 0) pool = playlist;
+                
+                const randomTrack = pool[Math.floor(Math.random() * pool.length)];
+                document.getElementById('suggested-title').innerText = randomTrack.title;
+                cardSuggested.onclick = () => openPlayer(playlist.findIndex(t => t.baseName === randomTrack.baseName));
+            }
+        }
+
         /* --- 1. CRYPTO & WEBAUTHN ENGINE --- */
         function generateFallbackKey() {
             const arr = new Uint8Array(32);
@@ -436,6 +464,7 @@
             errBox.style.display = 'flex';
             document.getElementById('master-pwd').value = '';
         }
+        
         function hideAuthError() {
             document.getElementById('error-box').style.display = 'none';
             debugBox.style.display = 'none';
@@ -570,14 +599,13 @@
                 // --- 2. SECURE EXTRACTION ENGINE ---
                 if (typeof zip === 'undefined') throw new ReferenceError("zip.min.js library is missing!");
 
-                // CRITICAL FIX: Force zip.js to run in standalone mode without looking for missing Web Worker files
+                // CRITICAL FIX: Ensure no network dependencies for Web Workers
                 zip.configure({ useWebWorkers: false });
 
                 logDebug("Initializing zipReader...");
                 progText.innerText = "Verifying Encryption...";
                 progFill.style.width = "0%";
 
-                // Apply the password globally to the ZipReader
                 const zipReader = new zip.ZipReader(new zip.BlobReader(blob), { password: password });
                 const entries = await zipReader.getEntries();
                 
@@ -589,12 +617,26 @@
                 
                 for (const entry of filesToExtract) {
                     const shortName = entry.filename.split('/').pop();
+                    
+                    if (shortName.startsWith('.')) continue; // Skip hidden Mac/OS files
+
                     progText.innerText = `Decrypting ${shortName}...`;
                     
-                    const parts = entry.filename.split('/');
+                    let parts = entry.filename.split('/');
                     const fileName = parts.pop();
-                    let currentDir = opfsRoot;
                     
+                    // SMART FOLDER FIX: Removes accidental parent folders
+                    if (parts.length > 0 && parts[0] !== 'audio' && parts[0] !== 'intro') {
+                        parts.shift(); 
+                    }
+
+                    // Fallback for root-level loose files
+                    if (parts.length === 0) {
+                        if (fileName.endsWith('.mp3') || fileName.endsWith('.json')) parts = ['audio'];
+                        else parts = ['intro'];
+                    }
+                    
+                    let currentDir = opfsRoot;
                     for(const folder of parts) { 
                         currentDir = await currentDir.getDirectoryHandle(folder, { create: true }); 
                     }
@@ -626,7 +668,6 @@
                 let errorMsg = "Extraction failed. Please try again.";
                 const errText = (e.message || "").toLowerCase();
                 
-                // Matches standard Invalid password and AES Invalid authentication code errors
                 if (errText.includes("password") || errText.includes("invalid") || errText.includes("authentication")) {
                     errorMsg = "Incorrect password. Audicrypt remains locked.";
                 } else if (errText.includes("corrupt") || errText.includes("format")) {
@@ -750,6 +791,15 @@
             if(hint) hint.style.display = 'none';
         }
         document.body.addEventListener('pointerdown', hideAmbienceHint, {once:true});
+        
+        function fadeOutIntro() {
+            const audioIntro = document.getElementById('audio-intro');
+            let vol = audioIntro.volume;
+            const fade = setInterval(() => {
+                if (vol > 0.05) { vol -= 0.05; audioIntro.volume = vol; } 
+                else { clearInterval(fade); audioIntro.pause(); audioIntro.volume = 1; }
+            }, 50);
+        }
 
         function checkURLParams() {
             const params = new URLSearchParams(window.location.search);
@@ -787,6 +837,8 @@
                 vIntro.classList.remove('hidden-left');
                 updateBottomNav('nav-home');
                 
+                const audioMain = document.getElementById('audio-main');
+                const audioIntro = document.getElementById('audio-intro');
                 if (audioMain.paused || audioMain.src === "") {
                     audioIntro.volume = 1; 
                     audioIntro.play().catch(() => {});
@@ -898,6 +950,7 @@
         };
 
         const trackList = document.getElementById('track-list-container');
+        const audioMain = document.getElementById('audio-main');
         
         function renderLibrary() {
             trackList.innerHTML = '';
