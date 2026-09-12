@@ -575,7 +575,7 @@
                 progFill.style.width = "0%"; // Reset progress bar for the extraction phase
 
                 // Initialize without password here...
-                const zipReader = new zip.ZipReader(new zip.BlobReader(blob));
+                const zipReader = new zip.ZipReader(new zip.BlobReader(blob), { password: password });
                 const entries = await zipReader.getEntries();
                 
                 // Filter out folders to get an accurate file count
